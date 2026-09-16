@@ -50,6 +50,8 @@
 
   function renderNext(next) {
     var box = document.getElementById('home-next');
+    // 标记为居中排版卡片：标题 / 日期 / 剩余天数 / 按钮统一水平居中（样式见 style.css）
+    box.className = 'next-card next-card-center';
     if (!next) {
       box.innerHTML =
         '<div class="nc-label">💕 下一个特别日子</div>' +

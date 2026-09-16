@@ -50,23 +50,47 @@
     return canvas;
   }
 
+  /* ---------- 主题取色 ----------
+     海报配色完全跟随当前主题：从 :root 读取 --share-* 变量（每套主题都已定义），
+     主题切换后（html[data-theme] 变化）再次生成海报即自动套用新配色。
+     取不到变量时回落到奶油色，保证极端情况下仍可出图。 */
+  var COLOR_FALLBACK = {
+    'share-bg-from': '#FFF3F5',
+    'share-bg-to': '#FFDCE5',
+    'share-deco': '#FFC9D6',
+    'share-num': '#E84D6F',
+    'share-accent': '#FF6B8A',
+    'share-title': '#4A2B33',
+    'share-text': '#7A5A62',
+    'share-sub': '#A8737B',
+    'share-card': 'rgba(255,255,255,0.55)',
+    'share-foot': '#E84D6F',
+    'share-foot-sub': '#B5888F',
+    'share-on-dark': '0'
+  };
+
+  function themeColor(name) {
+    var v = '';
+    try {
+      v = global.getComputedStyle(document.documentElement).getPropertyValue('--' + name);
+    } catch (e) { v = ''; }
+    v = v ? String(v).trim() : '';
+    return v || COLOR_FALLBACK[name] || '';
+  }
+
+  /* 当前主题是否深色底（决定页脚文字用白/彩色） */
+  function isDarkTheme() { return themeColor('share-on-dark') === '1'; }
+
   function paintBase(ctx, theme) {
     theme = theme || 'day';
-    var g;
-    if (theme === 'night') {
-      g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#3A2B3E');
-      g.addColorStop(1, '#1F1A24');
-    } else {
-      g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, theme === 'memory' ? '#FDEFF3' : '#FFF3F5');
-      g.addColorStop(1, '#FFDCE5');
-    }
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, themeColor('share-bg-from'));
+    g.addColorStop(1, themeColor('share-bg-to'));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
     // 装饰圆
     ctx.globalAlpha = 0.35;
-    ctx.fillStyle = '#FFC9D6';
+    ctx.fillStyle = themeColor('share-deco');
     ctx.beginPath(); ctx.arc(W - 60, 120, 150, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 0.22;
     ctx.beginPath(); ctx.arc(40, H - 160, 190, 0, Math.PI * 2); ctx.fill();
@@ -75,10 +99,10 @@
 
   function paintFooter(ctx, dark) {
     ctx.textAlign = 'center';
-    ctx.fillStyle = dark ? 'rgba(255,255,255,.85)' : '#E84D6F';
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.85)' : themeColor('share-foot');
     ctx.font = 'bold 40px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     ctx.fillText('和你第N天', W / 2, H - 96);
-    ctx.fillStyle = dark ? 'rgba(255,255,255,.55)' : '#B5888F';
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.55)' : themeColor('share-foot-sub');
     ctx.font = '24px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     ctx.fillText('记录你和TA的每一天', W / 2, H - 52);
   }
@@ -95,9 +119,9 @@
   function paintDay(canvas, data) {
     var ctx = canvas.getContext('2d');
     paintBase(ctx, 'day');
-    var dark = false;
+    var dark = isDarkTheme();
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#B5888F';
+    ctx.fillStyle = themeColor('share-sub');
     ctx.font = '30px sans-serif';
     ctx.fillText('我们在一起', W / 2, 250);
 
@@ -128,26 +152,26 @@
     var x0 = (W - (numW + GAP + tianW)) / 2; // 数字+“天”组合整体居中
 
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#E84D6F';
+    ctx.fillStyle = themeColor('share-num');
     ctx.fillText(num, x0, 570, maxNumW); // 末参为极端位数（8位以上）的压缩兜底
 
     ctx.font = '40px sans-serif';
-    ctx.fillStyle = '#B5888F';
+    ctx.fillStyle = themeColor('share-sub');
     ctx.fillText('天', x0 + numW + GAP, 470);
     ctx.textAlign = 'center';
 
     // 日期区间
     ctx.font = '30px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
-    ctx.fillStyle = '#7A5A62';
+    ctx.fillStyle = themeColor('share-text');
     ctx.fillText((data.startStr || '') + '  —  ' + (data.endStr || ''), W / 2, 680);
 
     // 分隔爱心
-    ctx.fillStyle = '#FF6B8A';
+    ctx.fillStyle = themeColor('share-accent');
     ctx.font = '34px sans-serif';
     ctx.fillText('❤', W / 2, 740);
 
     // 文案
-    ctx.fillStyle = '#7A5A62';
+    ctx.fillStyle = themeColor('share-text');
     ctx.font = '30px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var quoteLines = wrapText(ctx, data.quote || '普通的一天，因为有TA，变得值得记录。', 560);
     var lines = quoteLines.length > 2 ? quoteLines.slice(0, 2) : quoteLines;
@@ -162,20 +186,20 @@
     paintBase(ctx, 'day');
     ctx.textAlign = 'center';
 
-    ctx.fillStyle = '#B5888F';
+    ctx.fillStyle = themeColor('share-sub');
     ctx.font = '32px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     ctx.fillText('我们的下一个特别日子', W / 2, 300);
 
-    ctx.fillStyle = '#E84D6F';
+    ctx.fillStyle = themeColor('share-num');
     ctx.font = 'bold 88px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var titleLines = wrapText(ctx, data.title || '纪念日', 620);
     centerLines(ctx, titleLines, W / 2, 420, 100, 620);
 
-    ctx.fillStyle = '#7A5A62';
+    ctx.fillStyle = themeColor('share-text');
     ctx.font = '34px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     ctx.fillText(data.dateCN || '', W / 2, 680);
 
-    ctx.fillStyle = '#FF6B8A';
+    ctx.fillStyle = themeColor('share-accent');
     ctx.font = 'bold 56px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var remainTxt;
     if (data.remain > 0) remainTxt = '还有 ' + data.remain + ' 天';
@@ -183,12 +207,12 @@
     else remainTxt = '已过去 ' + (-data.remain) + ' 天';
     ctx.fillText(remainTxt, W / 2, 780);
 
-    ctx.fillStyle = '#7A5A62';
+    ctx.fillStyle = themeColor('share-text');
     ctx.font = '28px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var quoteLines = wrapText(ctx, data.quote || '一起走过的每一天，都值得被记住。', 560);
     centerLines(ctx, quoteLines, W / 2, 880, 42, 560);
 
-    paintFooter(ctx, false);
+    paintFooter(ctx, isDarkTheme());
   }
 
   /* ---------- 类型C：回忆卡 ---------- */
@@ -196,7 +220,7 @@
     var ctx = canvas.getContext('2d');
     paintBase(ctx, 'memory');
     var y = 0;
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillStyle = themeColor('share-card');
     roundedRect(ctx, 36, 40, W - 72, H - 180, 36);
     ctx.fill();
 
@@ -223,24 +247,24 @@
     ctx.font = '44px sans-serif';
     ctx.fillText(n, W / 2, startY + 60);
 
-    ctx.fillStyle = '#B5888F';
+    ctx.fillStyle = themeColor('share-sub');
     ctx.font = '28px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     ctx.fillText(data.dateCN || '', W / 2, startY + 130);
 
-    ctx.fillStyle = '#4A2B33';
+    ctx.fillStyle = themeColor('share-title');
     ctx.font = 'bold 54px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var titleLines = wrapText(ctx, data.title || '我们的回忆', 560);
     var tLines = titleLines.length > 2 ? titleLines.slice(0, 2) : titleLines;
     var ty = centerLines(ctx, tLines, W / 2, startY + 200, 66, 560);
 
-    ctx.fillStyle = '#8A626A';
+    ctx.fillStyle = themeColor('share-text');
     ctx.font = '30px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var content = data.content || '';
     var contentLines = wrapText(ctx, content, 540);
     if (contentLines.length > 4) contentLines = contentLines.slice(0, 4);
     var cy = centerLines(ctx, contentLines, W / 2, ty + 90, 46, 540);
 
-    paintFooter(ctx, false);
+    paintFooter(ctx, isDarkTheme());
   }
 
   /* 入口：render(type, data) → Promise<dataUrl> */

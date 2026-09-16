@@ -35,8 +35,11 @@
   // 日历下限：1926-01-01（约为当前年份-100，即 2026-100）
   // 防止用户连续翻月把年份翻到异常早（如 1912-12-11），避免再次写入 113 年前的错误开始日期
   var MIN_DATE = new Date(1926, 0, 1);
+  var MIN_YEAR = MIN_DATE.getFullYear();  // 年网格下限页起点（1926）
+  var YEAR_PAGE = 12;                     // 年网格每页 12 年
   var targetInput = null;   // 正在选择的目标输入框
   var viewY = 0, viewM = 0; // 当前视图年/月
+  var viewMode = 'day';     // 视图模式：day=日历 / month=月网格 / year=年网格
   var selISO = '';          // 当前选中日期 YYYY-MM-DD
   var pendingResolve = null; // 未决 Promise resolve
 
@@ -107,6 +110,7 @@
     if (anchor < MIN_DATE) anchor = MIN_DATE;
     viewY = anchor.getFullYear();
     viewM = anchor.getMonth();
+    viewMode = 'day';   // 每次打开都从日历视图开始
     render();
 
     UI.openSheet(SHEET_ID);
@@ -121,13 +125,34 @@
     var titleEl = document.getElementById('dp-title');
     if (!gridEl || !titleEl) return;
 
+    // 星期行仅在日历视图有意义；月网格只有一屏，翻页按钮隐藏（年网格翻页 = 翻 12 年）
+    var weekEl = document.getElementById('dp-week');
+    if (weekEl) weekEl.className = (viewMode === 'day') ? 'dp-week' : 'dp-week is-hidden';
+    var headEl = document.getElementById('dp-head');
+    if (headEl) headEl.className = (viewMode === 'month') ? 'dp-head is-nav-hidden' : 'dp-head';
+
+    if (viewMode === 'year') { renderTitle('year', titleEl); renderYearGrid(gridEl); return; }
+    if (viewMode === 'month') { renderTitle('month', titleEl); renderMonthGrid(gridEl); return; }
+    renderTitle('day', titleEl);
+    renderDayGrid(gridEl);
+  }
+
+  /* 标题：点「年」进年网格、点「月」进月网格，两种网格之间也可互相切换 */
+  function renderTitle(mode, titleEl) {
+    var yearPart = '<button type="button" class="dp-title-part' + (mode === 'year' ? ' is-active' : '') +
+      '" data-dp-view="year">' + (mode === 'year' ? '选择年份' : viewY + ' 年') + '</button>';
+    var monthPart = '<button type="button" class="dp-title-part' + (mode === 'month' ? ' is-active' : '') +
+      '" data-dp-view="month">' + (mode === 'month' ? '选择月份' : (viewM + 1) + ' 月') + '</button>';
+    titleEl.innerHTML = yearPart + monthPart;
+  }
+
+  /* 日历视图（默认） */
+  function renderDayGrid(gridEl) {
     var first = new Date(viewY, viewM, 1);
     var lead = (first.getDay() + 6) % 7; // 周一为一周起点
     var daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
     var today = todayDate();
     var selected = parseISO(selISO);
-
-    titleEl.textContent = viewY + ' 年 ' + (viewM + 1) + ' 月';
 
     var total = Math.ceil((lead + daysInMonth) / 7) * 7;
     var html = '';
@@ -141,7 +166,48 @@
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '">' + d + '</button>';
     }
     for (var k = lead + daysInMonth; k < total; k++) html += '<span class="dp-cell dp-void"></span>';
+    gridEl.className = 'dp-grid';
     gridEl.innerHTML = html;
+  }
+
+  /* 年网格分页起点：自 1926 起按 12 年一页对齐，保证永不显示 1926 之前的年份 */
+  function yearPageStart() {
+    return MIN_YEAR + Math.floor((viewY - MIN_YEAR) / YEAR_PAGE) * YEAR_PAGE;
+  }
+
+  /* 年网格：每页 12 年 */
+  function renderYearGrid(gridEl) {
+    var startY = yearPageStart();
+    var todayY = todayDate().getFullYear();
+    var html = '';
+    for (var i = 0; i < YEAR_PAGE; i++) {
+      var y = startY + i;
+      var cls = 'dp-cell';
+      if (y === viewY) cls += ' dp-selected';
+      if (y === todayY) cls += ' dp-today';
+      html += '<button type="button" class="' + cls + '" data-dp-year="' + y + '">' + y + '</button>';
+    }
+    gridEl.className = 'dp-grid dp-grid-year';
+    gridEl.innerHTML = html;
+  }
+
+  /* 月网格：12 个月 */
+  function renderMonthGrid(gridEl) {
+    var html = '';
+    for (var i = 0; i < 12; i++) {
+      var cls = 'dp-cell';
+      if (i === viewM) cls += ' dp-selected';
+      html += '<button type="button" class="' + cls + '" data-dp-month="' + i + '">' + (i + 1) + ' 月</button>';
+    }
+    gridEl.className = 'dp-grid dp-grid-month';
+    gridEl.innerHTML = html;
+  }
+
+  /* 视图切换（标题区域点击） */
+  function setView(mode) {
+    if (mode !== 'day' && mode !== 'month' && mode !== 'year') return;
+    viewMode = mode;
+    render();
   }
 
   function goMonth(delta) {
@@ -157,6 +223,19 @@
     render();
   }
 
+  /* 翻页统一入口：日历视图翻月；年网格翻 12 年（受 1926 下限钳制）；月网格单屏不翻页 */
+  function goNav(delta) {
+    if (viewMode === 'year') {
+      var startY = yearPageStart() + delta * YEAR_PAGE;
+      if (startY < MIN_YEAR) startY = MIN_YEAR;
+      viewY = startY;
+      render();
+      return;
+    }
+    if (viewMode === 'month') return;
+    goMonth(delta);
+  }
+
   /* ---------- 事件 ---------- */
   function init() {
     if (!document.getElementById('datepicker-sheet')) return;
@@ -170,11 +249,29 @@
       var nav = e.target.closest ? e.target.closest('[data-dp-nav]') : null;
       var todayBtn = e.target.closest ? e.target.closest('[data-dp-today]') : null;
       var dayBtn = e.target.closest ? e.target.closest('.dp-cell[data-date]') : null;
+      var viewBtn = e.target.closest ? e.target.closest('[data-dp-view]') : null;
+      var yearBtn = e.target.closest ? e.target.closest('[data-dp-year]') : null;
+      var monthBtn = e.target.closest ? e.target.closest('[data-dp-month]') : null;
 
-      if (nav) { goMonth(parseInt(nav.getAttribute('data-dp-nav'), 10) || 0); return; }
+      // 标题区域：在「日历 / 年网格 / 月网格」之间切换
+      if (viewBtn) { setView(viewBtn.getAttribute('data-dp-view')); return; }
+      // 年网格选中 → 回日历视图（沿用当前月，年份受 1926 下限钳制）
+      if (yearBtn) {
+        var y = parseInt(yearBtn.getAttribute('data-dp-year'), 10);
+        if (!isNaN(y)) { viewY = Math.max(y, MIN_YEAR); viewMode = 'day'; render(); }
+        return;
+      }
+      // 月网格选中 → 回日历视图
+      if (monthBtn) {
+        var mSel = parseInt(monthBtn.getAttribute('data-dp-month'), 10);
+        if (!isNaN(mSel)) { viewM = Math.min(Math.max(mSel, 0), 11); viewMode = 'day'; render(); }
+        return;
+      }
+      if (nav) { goNav(parseInt(nav.getAttribute('data-dp-nav'), 10) || 0); return; }
       if (todayBtn) {
         var t = todayDate();
         viewY = t.getFullYear(); viewM = t.getMonth();
+        viewMode = 'day';
         render();
         return;
       }

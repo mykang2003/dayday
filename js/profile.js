@@ -11,7 +11,11 @@
 
   global.Views = global.Views || {};
 
-  var THEME_NAMES = { cream: '奶油恋爱', sakura: '樱花', night: '夜晚' };
+  // 与 index.html #theme-sheet 中的 .theme-opt[data-theme] 保持一一对应
+  var THEME_NAMES = {
+    cream: '奶油恋爱', sakura: '樱花', night: '夜晚',
+    mint: '薄荷', sea: '海盐', sun: '暖阳'
+  };
 
   // 在一起日期合理性下限：1926-01-01（当前年份 - 100，与 onboarding / datepicker 的下限一致）
   var MIN_DATE = new Date(1926, 0, 1);
@@ -30,6 +34,8 @@
     var s = settings();
     s.theme = theme || 'cream';
     State.saveSettings(s);
+    // 状态栏 / 地址栏取色跟随当前主题
+    if (UI && UI.syncThemeColor) UI.syncThemeColor();
   }
   function aiReady() {
     var ai = settings().ai;

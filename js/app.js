@@ -94,6 +94,8 @@
   function init() {
     var s = State.settings();
     document.documentElement.setAttribute('data-theme', s.theme || 'cream');
+    // 浏览器状态栏配色跟随主题（读取当前主题的 --bg），保证切换主题后刷新仍一致
+    if (UI.syncThemeColor) UI.syncThemeColor();
     if (State.hasCouple()) go('/home');
     else go('/onboarding');
   }

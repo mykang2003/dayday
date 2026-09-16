@@ -152,6 +152,19 @@
     return '<span class="spinner"></span>请稍候';
   }
 
+  /* ---------- 状态栏配色跟随主题 ----------
+     读取当前主题的 --bg（主题切换后会立即变化），写入 <meta name="theme-color">，
+     让浏览器地址栏 / 系统状态栏颜色与主题保持一致，刷新后依旧生效 */
+  function syncThemeColor() {
+    if (!global.getComputedStyle) return;
+    var cs = global.getComputedStyle(document.documentElement);
+    var bg = cs.getPropertyValue('--bg');
+    bg = bg ? bg.trim() : '';
+    if (!bg) return;
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', bg);
+  }
+
   global.UI = {
     toast: toast,
     confirm: confirm,
@@ -165,6 +178,7 @@
     lockScroll: lockScroll,
     unlockScroll: unlockScroll,
     busyHtml: busyHtml,
+    syncThemeColor: syncThemeColor,
     get currentPage() { return currentPage; }
   };
 

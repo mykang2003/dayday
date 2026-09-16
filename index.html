@@ -84,11 +84,11 @@
 
   <div class="quote-card" id="home-quote"></div>
 
-  <div style="display:flex;justify-content:center;padding:10px 0 2px">
+  <div class="next-card" id="home-next"></div>
+
+  <div class="home-share-entry">
     <button class="btn btn-soft btn-sm" data-open-share="day">🖼 生成今日分享卡</button>
   </div>
-
-  <div class="next-card" id="home-next"></div>
 
   <div class="quick-grid">
     <button class="quick-item" data-nav="memory/new"><span class="quick-icon">📸</span><span>记录回忆</span></button>
@@ -334,6 +334,9 @@
       <button class="theme-opt" data-theme="cream"><span class="theme-swatch theme-cream"></span><span>奶油恋爱</span><span class="theme-sub">温柔日常</span></button>
       <button class="theme-opt" data-theme="sakura"><span class="theme-swatch theme-sakura"></span><span>樱花</span><span class="theme-sub">浪漫留白</span></button>
       <button class="theme-opt" data-theme="night"><span class="theme-swatch theme-night"></span><span>夜晚</span><span class="theme-sub">成熟克制</span></button>
+      <button class="theme-opt" data-theme="mint"><span class="theme-swatch theme-mint"></span><span>薄荷</span><span class="theme-sub">清爽通透</span></button>
+      <button class="theme-opt" data-theme="sea"><span class="theme-swatch theme-sea"></span><span>海盐</span><span class="theme-sub">安静辽阔</span></button>
+      <button class="theme-opt" data-theme="sun"><span class="theme-swatch theme-sun"></span><span>暖阳</span><span class="theme-sub">明亮温暖</span></button>
     </div>
   </div>
 </div>
@@ -413,12 +416,12 @@
     <button class="icon-btn sheet-close" data-close-sheet aria-label="关闭">✕</button>
   </div>
   <div class="sheet-body">
-    <div class="dp-head">
-      <button type="button" class="icon-btn dp-nav" data-dp-nav="-1" aria-label="上个月">‹</button>
+    <div class="dp-head" id="dp-head">
+      <button type="button" class="icon-btn dp-nav" data-dp-nav="-1" aria-label="上一页">‹</button>
       <div class="dp-title" id="dp-title"></div>
-      <button type="button" class="icon-btn dp-nav" data-dp-nav="1" aria-label="下个月">›</button>
+      <button type="button" class="icon-btn dp-nav" data-dp-nav="1" aria-label="下一页">›</button>
     </div>
-    <div class="dp-week">
+    <div class="dp-week" id="dp-week">
       <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
     </div>
     <div class="dp-grid" id="dp-grid"></div>

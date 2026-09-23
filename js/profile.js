@@ -63,7 +63,26 @@
         '从 ' + Utils.fmtCN(d) + ' 开始 · 今天第 ' + Utils.dayNumber(d) + ' 天';
     }
     renderDateRow(couple);
+    renderBirthdayLabel(couple);
     refreshLabels();
+  }
+
+  /* 双人生日（I）：设置页展示两人的生日，未设置时提示去设置 */
+  function renderBirthdayLabel(couple) {
+    var label = document.getElementById('profile-birthday-label');
+    if (!label) return;
+    var my = couple && couple.myBirthday;
+    var ta = couple && couple.taBirthday;
+    if (!my && !ta) {
+      label.textContent = '未设置';
+      label.classList.add('muted');
+      return;
+    }
+    label.classList.remove('muted');
+    var parts = [];
+    if (my) parts.push('我 ' + my);
+    if (ta) parts.push('TA ' + ta);
+    label.textContent = parts.join(' · ');
   }
 
   /* "在一起日期"行：展示当前日期（2024.02.14）；
@@ -105,14 +124,61 @@
     });
   }
 
+  /* 双人生日（I）：datepicker 选中后（data-date-open 委托写回 YYYY-MM-DD 并触发 change）
+     把全日期转成 MM-DD 展示与存储（兼容读取时两种格式） */
+  function bdToMmdd(input, label) {
+    var v = String(input.value || '').trim();
+    if (!v) return;
+    var p = v.split('-');
+    if (p.length === 3) {
+      var mmdd = p[1] + '-' + p[2];
+      input.value = mmdd;
+    }
+    label.textContent = '已选择 ' + input.value;
+  }
+  function openBirthdaySheet() {
+    var couple = State.couple();
+    if (!couple) { UI.toast('请先设置在一起日期'); return; }
+    var myBd = couple.myBirthday || '';
+    var taBd = couple.taBirthday || '';
+    var myInput = document.getElementById('bd-my');
+    var taInput = document.getElementById('bd-ta');
+    var myLabel = document.getElementById('bd-my-label');
+    var taLabel = document.getElementById('bd-ta-label');
+    myInput.value = myBd;
+    taInput.value = taBd;
+    myLabel.textContent = myBd ? '已选择 ' + myBd : '未设置';
+    taLabel.textContent = taBd ? '已选择 ' + taBd : '未设置';
+    UI.openSheet('birthday-sheet');
+  }
+  function saveBirthday() {
+    var couple = State.couple();
+    if (!couple) return;
+    var mb = document.getElementById('bd-my').value.trim();
+    var tb = document.getElementById('bd-ta').value.trim();
+    var bad = [];
+    if (mb && !/^\d{2}-\d{2}$/.test(mb)) bad.push('我的生日');
+    if (tb && !/^\d{2}-\d{2}$/.test(tb)) bad.push('TA的生日');
+    if (bad.length) { UI.toast(bad.join('、') + '格式应为 月-日，如 02-14'); return; }
+    couple.myBirthday = mb || '';
+    couple.taBirthday = tb || '';
+    State.saveCouple(couple);
+    UI.closeSheet('birthday-sheet');
+    UI.toast('双人生日已保存');
+    render();
+  }
+
   function exportData() {
     var payload = {
       version: 1,
       exportedAt: new Date().toISOString(),
+      app: 'ourdays',
       couple: State.couple(),
       settings: settings(),
       memories: State.memories(),
-      customAnniv: State.customAnniv()
+      customAnniv: State.customAnniv(),
+      annivOrder: OD.LS.get('annivOrder', []),      // 纪念日拖拽顺序
+      shareTemplate: OD.LS.get('shareTemplate', 'sunny') // 分享模板偏好
     };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
@@ -176,6 +242,14 @@
     });
   }
 
+  /* 生成今日分享卡（唯一分享入口）：复用首页的今日数据，分享页返回"我的" */
+  function openDayShare() {
+    if (!global.DayShareData) { UI.toast('今日分享卡暂不可用'); return; }
+    var data = global.DayShareData();
+    if (!data) { UI.toast('请先设置在一起日期'); return; }
+    global.ShareOpen('day', data, '/profile');
+  }
+
   function openAiSheet() {
     var ai = settings().ai;
     document.getElementById('ai-base').value = ai.base || '';
@@ -207,6 +281,7 @@
       }
       global.Nav.go('/onboarding');
     });
+    document.getElementById('profile-share').addEventListener('click', openDayShare);
     document.getElementById('profile-date').addEventListener('click', editRelationshipDate);
     document.getElementById('profile-theme').addEventListener('click', openThemeSheet);
     document.getElementById('profile-ai').addEventListener('click', openAiSheet);
@@ -214,6 +289,16 @@
     document.getElementById('profile-sample').addEventListener('click', loadSample);
     document.getElementById('profile-reset').addEventListener('click', clearAll);
     document.getElementById('ai-save').addEventListener('click', saveAi);
+
+    /* 双人生日（I） */
+    var bdEntry = document.getElementById('profile-birthday');
+    if (bdEntry) bdEntry.addEventListener('click', openBirthdaySheet);
+    var bdMy = document.getElementById('bd-my');
+    var bdTa = document.getElementById('bd-ta');
+    if (bdMy) bdMy.addEventListener('change', function () { bdToMmdd(bdMy, document.getElementById('bd-my-label')); });
+    if (bdTa) bdTa.addEventListener('change', function () { bdToMmdd(bdTa, document.getElementById('bd-ta-label')); });
+    var bdSave = document.getElementById('birthday-save');
+    if (bdSave) bdSave.addEventListener('click', saveBirthday);
 
     document.getElementById('theme-sheet').addEventListener('click', function (e) {
       var opt = e.target.closest ? e.target.closest('.theme-opt') : null;

@@ -48,6 +48,10 @@
     return null;
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function renderNext(next) {
     var box = document.getElementById('home-next');
     // 标记为居中排版卡片：标题 / 日期 / 剩余天数 / 按钮统一水平居中（样式见 style.css）
@@ -70,6 +74,54 @@
       '<div class="nc-days">' + dayTxt + '</div>' +
       '<div class="nc-btn-row"><button class="btn btn-soft btn-sm" data-nav="anniv">查看全部纪念日</button></div>';
     box.innerHTML = html;
+  }
+
+  /* D. 纪念日倒计时 widget：大数字展示最近一个纪念日的剩余天数 */
+  function renderCountdown() {
+    var el = document.getElementById('home-countdown');
+    if (!el) return;
+    var next = nextAuto() || nextCustom();
+    if (!next) { el.hidden = true; return; }
+    el.hidden = false;
+    var remain = Utils.diffDaysFromToday(next.date);
+    var title = next.kind === 'auto' ? (next.n + '天纪念日') : next.title;
+    var dateCN = Utils.fmtCN(next.date);
+    var label = remain === 0
+      ? '就是今天 ❤️ 「' + esc(title) + '」'
+      : '距离「' + esc(title) + '」还有';
+    var html =
+      '<div class="cd-label">' + label + '</div>' +
+      '<div class="cd-num">' + remain + '</div>' +
+      '<div class="cd-unit">天</div>' +
+      '<div class="cd-date">' + dateCN + '</div>';
+    el.innerHTML = html;
+  }
+
+  /* F. 在一起总时长：X 年 X 个月 X 天 */
+  function renderDuration() {
+    var el = document.getElementById('home-duration');
+    if (!el) return;
+    var couple = State.couple();
+    var start = couple ? Utils.parseDate(couple.relationshipDate) : null;
+    var dur = start ? Utils.duration(start) : null;
+    if (!dur) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '在一起 <b>' + dur.text + '</b>';
+  }
+
+  /* I. 距离 TA 的生日还有 X 天 */
+  function renderBirthday() {
+    var el = document.getElementById('home-birthday');
+    if (!el) return;
+    var couple = State.couple();
+    var bd = couple ? Utils.nextBirthday(couple.taBirthday) : null;
+    if (!bd) { el.hidden = true; return; }
+    el.hidden = false;
+    var pn = Utils.pairNames();
+    var who = (pn.has && pn.ta) ? pn.ta : 'TA';
+    el.textContent = bd.diff === 0
+      ? '🎂 今天就是 ' + who + ' 的生日，快送上祝福！'
+      : '🎂 距离 ' + who + ' 的生日还有 ' + bd.diff + ' 天';
   }
 
   function renderRecent() {
@@ -121,15 +173,10 @@
     document.getElementById('home-today-tip').textContent =
       days === 1 ? '今天是第1天 ❤️' : '原来我们已经一起走了这么久。';
 
-    // 今日分享卡数据（供 data-open-share="day" 入口使用）
-    lastDayShare = {
-      days: days,
-      startStr: Utils.fmtDot(start),
-      endStr: Utils.fmtDot(todayD),
-      quote: quote
-    };
-
     renderNext(nextAuto() || nextCustom());
+    renderCountdown();
+    renderDuration();
+    renderBirthday();
     renderRecent();
   }
 
@@ -143,13 +190,21 @@
     global.UI.tipSheet(text, '🎁 想个惊喜');
   }
 
-  /* 今日分享卡 */
-  var lastDayShare = null;
-  document.addEventListener('click', function (e) {
-    var t = e.target.closest ? e.target.closest('[data-open-share="day"]') : null;
-    if (!t || !lastDayShare) return;
-    global.ShareOpen('day', lastDayShare, '/home');
-  });
+  /* 今日分享卡数据（供"我的/设置"页唯一分享入口使用，见 profile.js） */
+  global.DayShareData = function () {
+    var couple = State.couple();
+    if (!couple) return null;
+    var start = Utils.parseDate(couple.relationshipDate);
+    var days = Utils.dayNumber(start);
+    var todayD = Utils.today();
+    var quote = OD.QUOTES[(days - 1) % OD.QUOTES.length].replace('{n}', days);
+    return {
+      days: days,
+      startStr: Utils.fmtDot(start),
+      endStr: Utils.fmtDot(todayD),
+      quote: quote
+    };
+  };
 
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-open-ai]') : null;

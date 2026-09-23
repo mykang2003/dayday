@@ -69,7 +69,40 @@
     'share-on-dark': '0'
   };
 
+  /* ---------- 分享模板（L：多模板配色） ----------
+     模板名对应分享页顶部 #share-templates 的 data-st（sunny / night / sakura）。
+     选中模板后覆盖 --share-* 变量：模板优先、主题次之、内置兜底。 */
+  var STYLE_TEMPLATES = {
+    sunny: {
+      'share-bg-from': '#FFF7EC', 'share-bg-to': '#FFE2BC',
+      'share-deco': '#F5C787', 'share-num': '#C96E1F', 'share-accent': '#EE9A3E',
+      'share-title': '#4A2E14', 'share-text': '#7A5B3A', 'share-sub': '#8F6B45',
+      'share-card': 'rgba(255,255,255,0.62)',
+      'share-foot': '#C96E1F', 'share-foot-sub': '#A07B55', 'share-on-dark': '0'
+    },
+    night: {
+      'share-bg-from': '#332A3D', 'share-bg-to': '#16121C',
+      'share-deco': '#5A4470', 'share-num': '#F2C8DA', 'share-accent': '#E8A0B4',
+      'share-title': '#F6EFF8', 'share-text': '#DCD0E2', 'share-sub': '#B3A3BC',
+      'share-card': 'rgba(255,255,255,0.09)',
+      'share-foot': '#F2C8DA', 'share-foot-sub': 'rgba(255,255,255,0.60)', 'share-on-dark': '1'
+    },
+    sakura: {
+      'share-bg-from': '#FDF1F6', 'share-bg-to': '#F6D6E4',
+      'share-deco': '#EBB9CE', 'share-num': '#AF4272', 'share-accent': '#E97CA7',
+      'share-title': '#4A3340', 'share-text': '#7A5F6B', 'share-sub': '#8F6B7D',
+      'share-card': 'rgba(255,255,255,0.60)',
+      'share-foot': '#AF4272', 'share-foot-sub': '#8F7482', 'share-on-dark': '0'
+    }
+  };
+
+  var _tmplOverride = null;
+  function setTemplate(name) {
+    _tmplOverride = (name && STYLE_TEMPLATES[name]) ? STYLE_TEMPLATES[name] : null;
+  }
+
   function themeColor(name) {
+    if (_tmplOverride && _tmplOverride[name] !== undefined) return _tmplOverride[name];
     var v = '';
     try {
       v = global.getComputedStyle(document.documentElement).getPropertyValue('--' + name);
@@ -236,7 +269,9 @@
     paintFooter(ctx, isDarkTheme());
   }
 
-  /* ---------- 类型C：回忆卡 ---------- */
+  /* ---------- 类型C：回忆卡 ----------
+     版式：顶部图片圆角展示（等比 cover，不压缩画质，仅裁剪显示），
+     图片区高度收窄为 440px，给下方文字让出更多垂直空间，防止长文与页脚姓名重叠。 */
   function paintMemory(canvas, data) {
     var ctx = canvas.getContext('2d');
     paintBase(ctx, 'memory');
@@ -249,13 +284,13 @@
       return loadImage(data.photo).then(function (img) {
         // 顶部图片圆角裁剪
         ctx.save();
-        roundedRect(ctx, 60, 70, W - 120, 560, 32);
+        roundedRect(ctx, 60, 70, W - 120, 440, 32);
         ctx.clip();
-        var scale = Math.max((W - 120) / img.width, 560 / img.height);
+        var scale = Math.max((W - 120) / img.width, 440 / img.height);
         var dw = img.width * scale, dh = img.height * scale;
-        ctx.drawImage(img, 60 + ((W - 120) - dw) / 2, 70 + (560 - dh) / 2, dw, dh);
+        ctx.drawImage(img, 60 + ((W - 120) - dw) / 2, 70 + (440 - dh) / 2, dw, dh);
         ctx.restore();
-        paintMemoryText(ctx, data, 660);
+        paintMemoryText(ctx, data, 560);
       });
     }
     paintMemoryText(ctx, data, 140);
@@ -263,6 +298,8 @@
   }
 
   function paintMemoryText(ctx, data, startY) {
+    /* 页脚保护区：名字行基线在 H-146，正文区不得侵入 H-250 以下 */
+    var FOOT_TOP = H - 250;
     var n = data.moodEmoji || '❤️';
     ctx.textAlign = 'center';
     ctx.font = '44px sans-serif';
@@ -278,18 +315,27 @@
     var tLines = titleLines.length > 2 ? titleLines.slice(0, 2) : titleLines;
     var ty = centerLines(ctx, tLines, W / 2, startY + 200, 66, 560);
 
+    /* 正文：按剩余可用高度动态计算行数（上限 4 行），超出截断并加省略号 */
     ctx.fillStyle = themeColor('share-text');
     ctx.font = '30px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
     var content = data.content || '';
     var contentLines = wrapText(ctx, content, 540);
-    if (contentLines.length > 4) contentLines = contentLines.slice(0, 4);
+    var maxRows = Math.max(1, Math.min(4, Math.floor((FOOT_TOP - (ty + 90) - 12) / 46)));
+    if (contentLines.length > maxRows) {
+      contentLines = contentLines.slice(0, maxRows);
+      var lastTxt = contentLines[maxRows - 1];
+      var cut = lastTxt;
+      while (cut.length > 0 && ctx.measureText(cut + '…').width > 540) cut = cut.slice(0, -1);
+      contentLines[maxRows - 1] = (cut.length ? cut : lastTxt.slice(0, 1)) + '…';
+    }
     var cy = centerLines(ctx, contentLines, W / 2, ty + 90, 46, 540);
 
     paintFooter(ctx, isDarkTheme());
   }
 
-  /* 入口：render(type, data) → Promise<dataUrl> */
-  function render(type, data) {
+  /* 入口：render(type, data, template?) → Promise<dataUrl> */
+  function render(type, data, template) {
+    setTemplate(template || null);
     var canvas = baseCanvas();
     var p;
     if (type === 'anniv') { paintAnniv(canvas, data); p = Promise.resolve(); }

@@ -96,8 +96,17 @@
     document.documentElement.setAttribute('data-theme', s.theme || 'cream');
     // 浏览器状态栏配色跟随主题（读取当前主题的 --bg），保证切换主题后刷新仍一致
     if (UI.syncThemeColor) UI.syncThemeColor();
-    if (State.hasCouple()) go('/home');
-    else go('/onboarding');
+    if (State.hasCouple()) {
+      // 刷新后停留在上次所在主导航页（localStorage 由 ui.showPage 记录）
+      var last = '';
+      try { last = localStorage.getItem('od.lastPage') || ''; } catch (e) { last = ''; }
+      go((last === 'home' || last === 'story' || last === 'anniv' || last === 'profile') ? ('/' + last) : '/home');
+    } else go('/onboarding');
+
+    // 进入页面提醒（E）：等当前页渲染完成后再检查，避免弹层与首屏渲染竞争
+    if (global.AnnivReminder && global.AnnivReminder.check) {
+      setTimeout(global.AnnivReminder.check, 700);
+    }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

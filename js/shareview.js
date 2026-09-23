@@ -95,6 +95,21 @@
     UI.toast('长按图片即可保存');
   }
 
+  /* 分享模板（L）：读 LS → 无则默认 sunny；渲染时同步高亮按钮 */
+  var OD = global.OurDays || {};
+  var TMPL_KEY = 'shareTemplate';
+  var TMPL_DEFAULT = 'sunny';
+  function getTemplate() {
+    var t = (OD.LS || {}).get ? OD.LS.get(TMPL_KEY, TMPL_DEFAULT) : TMPL_DEFAULT;
+    return (t === 'sunny' || t === 'night' || t === 'sakura') ? t : TMPL_DEFAULT;
+  }
+  function setTemplateActive(t) {
+    var btns = document.querySelectorAll('#share-templates .st-item');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('is-active', btns[i].getAttribute('data-st') === t);
+    }
+  }
+
   function render() {
     var canvas = document.getElementById('share-canvas');
     var loading = document.getElementById('share-loading');
@@ -105,7 +120,8 @@
     canvas.hidden = true;
     loading.hidden = false;
     download.removeAttribute('href');
-    global.Share.render(payload.type, payload.data).then(function (dataUrl) {
+    setTemplateActive(getTemplate());
+    global.Share.render(payload.type, payload.data, getTemplate()).then(function (dataUrl) {
       var img = new Image();
       img.onload = function () {
         canvas.width = img.width;
@@ -134,6 +150,20 @@
   }
 
   function bind() {
+    /* 模板切换：持久化选择并重新生成海报 */
+    var tmplBar = document.getElementById('share-templates');
+    if (tmplBar) {
+      tmplBar.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.st-item') : null;
+        if (!btn || !tmplBar.contains(btn)) return;
+        var t = btn.getAttribute('data-st');
+        if (!t || t === getTemplate()) return;
+        (OD.LS || {}).set && OD.LS.set(TMPL_KEY, t);
+        setTemplateActive(t);
+        render();
+      });
+    }
+
     document.getElementById('share-close').addEventListener('click', function () {
       var back = payload ? payload.back : '/home';
       payload = null;

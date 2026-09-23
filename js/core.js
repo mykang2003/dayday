@@ -182,6 +182,44 @@
     var diff = Math.round((toUTCDate(date) - toUTCDate(today())) / 86400000);
     return diff;
   }
+  /* 在一起总时长：从开始日到今天的「X 年 X 个月 X 天」（按自然月/年差计算） */
+  function duration(start) {
+    if (!start || isNaN(start.getTime())) return null;
+    var t = today();
+    var y = t.getFullYear() - start.getFullYear();
+    var m = t.getMonth() - start.getMonth();
+    var d = t.getDate() - start.getDate();
+    if (d < 0) {
+      m--;
+      var prev = new Date(t.getFullYear(), t.getMonth(), 0); // 上个月最后一天
+      d += prev.getDate();
+    }
+    if (m < 0) { y--; m += 12; }
+    var text;
+    if (y > 0 && m > 0) text = y + ' 年 ' + m + ' 个月 ' + d + ' 天';
+    else if (y > 0) text = y + ' 年 ' + d + ' 天';
+    else if (m > 0) text = m + ' 个月 ' + d + ' 天';
+    else text = d + ' 天';
+    return { y: y, m: m, d: d, text: text };
+  }
+  /* 下一个生日：接受 'YYYY-MM-DD' 或 'MM-DD'，今年已过则取明年；返回 {date, diff} */
+  function nextBirthday(bdStr) {
+    if (!bdStr) return null;
+    var parts = String(bdStr).split('-');
+    var month = 0, day = 0;
+    if (parts.length === 3) { month = +parts[1]; day = +parts[2]; }
+    else if (parts.length === 2) { month = +parts[0]; day = +parts[1]; }
+    if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    var now = today();
+    var y = now.getFullYear();
+    var cand = new Date(y, month - 1, day);
+    var diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
+    if (diff < 0) {
+      cand = new Date(y + 1, month - 1, day);
+      diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
+    }
+    return { date: cand, diff: diff, month: month, day: day };
+  }
 
   /* ---------- 常量 ---------- */
   var AUTO_ANNIV = [
@@ -307,7 +345,8 @@
     Utils: {
       parseDate: parseDate, fmtCN: fmtCN, fmtDot: fmtDot, fmtInput: fmtInput,
       today: today, dayNumber: dayNumber, nthDayDate: nthDayDate,
-      diffDaysFromToday: diffDaysFromToday, pad: pad, uid: uid, clone: clone,
+      diffDaysFromToday: diffDaysFromToday, duration: duration, nextBirthday: nextBirthday,
+      pad: pad, uid: uid, clone: clone,
       fitNum: fitNum, numSizeClass: numSizeClass, pairNames: pairNames
     },
     AUTO_ANNIV: AUTO_ANNIV,

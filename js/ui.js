@@ -124,6 +124,7 @@
   var currentPage = '';
   function showPage(pageId, opts) {
     opts = opts || {};
+    var wasPage = currentPage;
     forceUnlock(); // 兜底：页面切换时确保背景不被锁死
     var pages = document.querySelectorAll('.page');
     for (var i = 0; i < pages.length; i++) pages[i].hidden = true;
@@ -142,6 +143,17 @@
       }
     }
     currentPage = pageId;
+    // 转场动画（J）：主导航 Tab 切换时轻量淡入 + 上移（首屏/分享页/引导页不做，避免闪烁）
+    if (opts.nav !== false && wasPage && wasPage !== pageId) {
+      el.classList.remove('page-enter');
+      void el.offsetWidth; // 强制 reflow，保证连续切换时动画重新触发
+      el.classList.add('page-enter');
+    }
+    // 刷新保持当前页：仅记录主导航 Tab（相册归属"我们的故事"Tab，onboarding/share 不记录）
+    var keep = pageId === 'album' ? 'story' : pageId;
+    if (NAV_PAGES.indexOf(keep) > -1) {
+      try { localStorage.setItem('od.lastPage', keep); } catch (e) { /* 隐私模式忽略 */ }
+    }
     window.scrollTo(0, 0);
     if (global.renderers && global.renderers[pageId]) {
       global.renderers[pageId](opts);

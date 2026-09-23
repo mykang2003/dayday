@@ -16,34 +16,13 @@
   }
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
-  /* ---------- 图片压缩 ---------- */
+  /* ---------- 图片读取 ---------- */
   function fileToDataUrl(file) {
     return new Promise(function (resolve, reject) {
       var fr = new FileReader();
       fr.onload = function () { resolve(fr.result); };
       fr.onerror = reject;
       fr.readAsDataURL(file);
-    });
-  }
-  function compressImage(dataUrl, maxSide) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      img.onload = function () {
-        var w = img.width, h = img.height;
-        var scale = 1;
-        if (Math.max(w, h) > (maxSide || 1280)) scale = (maxSide || 1280) / Math.max(w, h);
-        var cw = Math.round(w * scale), ch = Math.round(h * scale);
-        var canvas = document.createElement('canvas');
-        canvas.width = cw; canvas.height = ch;
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.drawImage(img, 0, 0, cw, ch);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
-      };
-      // 解码失败（如 iOS 未转码的 HEIC）→ 返回 null，由调用方提示并跳过
-      img.onerror = function () { resolve(null); };
-      img.src = dataUrl;
     });
   }
 
@@ -143,15 +122,14 @@
     var valid = [];
     for (var i = 0; i < files.length && valid.length < remain; i++) {
       var f = files[i];
-      // 放宽为任意 image/*：iOS 相册可能返回 HEIC 等格式，可解码的会被自动压缩为 JPEG
+      // 放宽为任意 image/*：iOS 相册可能返回 HEIC 等格式
       if (f && /^image\//i.test(f.type)) valid.push(f);
     }
     if (!valid.length) { UI.toast('请选择图片文件'); return; }
     var seq = valid.map(function (file) {
       return fileToDataUrl(file).then(function (dataUrl) {
-        return compressImage(dataUrl, 1280).then(function (small) {
-          return small ? { id: Utils.uid('ph'), dataUrl: small } : null;
-        });
+        // 原图保存：不做 canvas 压缩/降质，展示层用 object-fit 等比适配
+        return dataUrl ? { id: Utils.uid('ph'), dataUrl: dataUrl } : null;
       }).catch(function () { return null; });
     });
     Promise.all(seq).then(function (items) {
@@ -361,7 +339,6 @@
 
     // 按钮行为
     document.getElementById('detail-edit').onclick = function () { global.Nav.go('/memory/new?id=' + mem.id); };
-    document.getElementById('detail-share').onclick = function () { shareMemory(mem); };
     document.getElementById('detail-ai-rewrite').onclick = function () { aiRewriteDetail(mem); };
     document.getElementById('detail-delete').onclick = function () { deleteMemory(mem); };
   }
@@ -397,25 +374,6 @@
       (mem.photos || []).forEach(function (p) { OD.PhotoStore.remove(p.id); });
       UI.toast('已藏起来。');
       global.Nav.go('/story');
-    });
-  }
-
-  /* ---------- 分享 ---------- */
-  function shareMemory(mem) {
-    var d = Utils.parseDate(mem.date);
-    var photo = (mem.photos && mem.photos.length) ? null : null;
-    var load = Promise.resolve(null);
-    if (mem.photos && mem.photos.length) {
-      load = OD.PhotoStore.get(mem.photos[0].id);
-    }
-    load.then(function (url) {
-      global.ShareOpen('memory', {
-        title: mem.title || '我们的回忆',
-        dateCN: d ? Utils.fmtCN(d) : '',
-        content: (mem.content || '').slice(0, 120),
-        photo: url,
-        moodEmoji: mem.mood && OD.MOODS[mem.mood] ? OD.MOODS[mem.mood].emoji : '❤️'
-      }, '/memory/detail?id=' + mem.id);
     });
   }
 

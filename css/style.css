@@ -615,6 +615,10 @@ textarea { -webkit-appearance: none; appearance: none; }
 .anniv-item .ai-title { font-size: 15px; font-weight: 700; }
 .anniv-item .ai-date { font-size: 12px; color: var(--sub); margin-top: var(--sp-1); }
 .anniv-item .ai-count { font-size: 13px; font-weight: 700; color: var(--primary-deep); white-space: nowrap; }
+/* 星期几换行保护：日期行内"· 周X"整体不拆字，空间不足时在"·"前整体换行，
+   避免窄屏（含 320px）下"周五/周一"被挤压拆成单字截断 */
+.ai-date .ai-dow, .nah-date .ai-dow { white-space: nowrap; }
+.ai-date, .nah-date { overflow-wrap: break-word; word-break: normal; }
 .anniv-item.passed { opacity: .55; }
 .anniv-item.passed .ai-count { color: var(--sub); }
 .anniv-flag { font-size: 11px; color: var(--primary-deep); background: var(--soft); border-radius: 999px; padding: var(--sp-1) var(--sp-2); margin-left: var(--sp-2); }
@@ -1024,4 +1028,10 @@ input, textarea, select {
   .dp-grid-day .dp-cell[data-date] .dp-l { font-size: 9px; }
   .hero-names { font-size: 13px; }
   .anniv-names { font-size: 12px; }
+  /* 极窄屏：收紧列表项间距/字号，给日期行让出更多宽度，保证星期几完整 */
+  .next-card .nc-meta { font-size: 13px; }
+  .nah-date { font-size: 15px; }
+  .anniv-item { gap: var(--sp-2); padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .anniv-item .ai-icon { font-size: 19px; margin-right: var(--sp-2); }
+  .anniv-item .ai-count { font-size: 12px; }
 }

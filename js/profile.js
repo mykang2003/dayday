@@ -134,7 +134,7 @@
       var mmdd = p[1] + '-' + p[2];
       input.value = mmdd;
     }
-    label.textContent = '已选择 ' + input.value;
+    if (label) label.textContent = '已选择 ' + input.value;
   }
   function openBirthdaySheet() {
     var couple = State.couple();
@@ -147,8 +147,8 @@
     var taLabel = document.getElementById('bd-ta-label');
     myInput.value = myBd;
     taInput.value = taBd;
-    myLabel.textContent = myBd ? '已选择 ' + myBd : '未设置';
-    taLabel.textContent = taBd ? '已选择 ' + taBd : '未设置';
+    if (myLabel) myLabel.textContent = myBd ? '已选择 ' + myBd : '未设置';
+    if (taLabel) taLabel.textContent = taBd ? '已选择 ' + taBd : '未设置';
     UI.openSheet('birthday-sheet');
   }
   function saveBirthday() {

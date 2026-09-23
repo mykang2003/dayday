@@ -900,3 +900,128 @@ input, textarea, select {
   .ob-hero-num { font-size: 56px; }
   .page-center { padding-top: calc(var(--sp-2) + var(--sat)); }
 }
+
+/* ============================================================
+   新增：农历日期 / 双人名字 / 纪念日拖拽排序
+   全部沿用已有设计令牌（--sp-* / --r-* / --ctl-*），含窄屏适配
+   ============================================================ */
+
+/* ---------- 日期选择弹层：公历 + 农历双行格 ---------- */
+/* 农历行占一行文字高度，格高由 --ctl-sm(40) 提升到 --ctl-lg(52)，避免双行文字挤压 */
+.dp-grid-day .dp-cell[data-date] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: var(--ctl-lg);
+  padding: 0;
+  line-height: 1.05;
+  overflow: hidden;
+}
+.dp-grid-day .dp-cell[data-date] .dp-d {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.05;
+}
+.dp-grid-day .dp-cell[data-date] .dp-l {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.05;
+  color: var(--sub);
+  opacity: .9;
+  white-space: nowrap;       /* 农历短文本不换行 */
+  transform: scale(.94);     /* 视觉再收一点，避免「闰X月」三字撑破格宽 */
+  transform-origin: center;
+}
+/* 今天 / 选中态下农历行跟随提亮，保证对比度 */
+.dp-grid-day .dp-cell.dp-today .dp-l,
+.dp-grid-day .dp-cell.dp-selected .dp-l { color: currentColor; opacity: .78; }
+.dp-grid-day .dp-cell.dp-void { height: var(--ctl-lg); }
+
+/* ---------- 双人名字（引导页设置的两个称呼） ---------- */
+/* 首页 hero：天数大字上方的小字，居中 + 单行省略，不挤压天数数字 */
+.hero-names {
+  max-width: 100%;
+  margin-bottom: var(--sp-2);
+  padding: 0 var(--sp-3);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--sub);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 纪念日页：列表上方的名字条 */
+.anniv-names {
+  margin: 0 var(--sp-3) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--card-soft, rgba(0, 0, 0, .03));
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sub);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 分区标题右侧的操作提示文字 */
+.section-hint {
+  font-size: 12px;
+  color: var(--sub);
+  opacity: .85;
+}
+
+/* ---------- 纪念日列表：分组标题 + 拖拽排序 ---------- */
+/* 分组小标题（自定义 / 自动），同时体现「自定义排在前面」 */
+.anniv-group-title {
+  margin: var(--sp-3) var(--sp-2) var(--sp-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--sub);
+  opacity: .9;
+}
+.anniv-item .ai-title { word-break: break-word; overflow-wrap: break-word; }
+
+/* 拖拽中的行：抬升视觉，不改变行内排版 */
+.anniv-item.dragging {
+  opacity: .82;
+  transform: scale(1.01);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .16);
+  position: relative;
+  z-index: 5;
+}
+
+/* 拖拽把手：触摸端 40×40 命中区，透明背景不破坏列表视觉 */
+.ai-grip {
+  flex: 0 0 auto;
+  width: var(--ctl-sm);
+  height: var(--ctl-sm);
+  margin-left: calc(-1 * var(--sp-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-xs);
+  color: var(--sub);
+  opacity: .7;
+  font-size: 16px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;              /* 关键：把手上的手势交给排序，不触发页面滚动 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ai-grip:active { cursor: grabbing; opacity: 1; }
+
+/* 窄屏：农历再收一档，保证 7 列网格不挤爆 */
+@media (max-width: 360px) {
+  .dp-grid-day .dp-cell[data-date] .dp-d { font-size: 14px; }
+  .dp-grid-day .dp-cell[data-date] .dp-l { font-size: 9px; }
+  .hero-names { font-size: 13px; }
+  .anniv-names { font-size: 12px; }
+}

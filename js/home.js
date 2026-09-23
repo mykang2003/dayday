@@ -99,6 +99,14 @@
     var start = Utils.parseDate(couple.relationshipDate);
     var days = Utils.dayNumber(start);
 
+    // 双人名字：取引导页 / 编辑资料里设置的两个人称呼；未设置时隐藏（保持原排版）
+    var namesEl = document.getElementById('home-names');
+    if (namesEl) {
+      var pn = Utils.pairNames();
+      namesEl.textContent = pn.has ? pn.text : '';
+      namesEl.hidden = !pn.has;
+    }
+
     var dayEl = document.getElementById('home-days');
     Utils.fitNum(dayEl, days); // 天数位数多时自动缩小字号，防溢出
     countUp(dayEl, days);

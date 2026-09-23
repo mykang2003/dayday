@@ -1,12 +1,20 @@
 /* ============================================================
    和你第N天 · anniversary.js
-   纪念日（PRD 9）：自动纪念日 / 自定义纪念日 / 倒计时
+   纪念日（PRD 9）：自定义 / 自动纪念日 · 倒计时 · 拖拽排序
+   ------------------------------------------------------------
+   列表顺序规则（本次改造）：
+     1. 自定义纪念日整体排在自动纪念日之前（DOM 用分组标题体现该顺序）；
+     2. 组内顺序由拖拽决定，持久化在 localStorage 的 od.annivOrder（字符串 key 数组）；
+     3. 新条目（未出现在顺序记录里）按默认次序追加到本组末尾，
+        因此新增纪念日不会打乱已拖拽好的老顺序。
+   拖拽：零依赖 Pointer 兼容实现（鼠标 + 触摸），把手 .ai-grip 上触摸不滚页面。
    ============================================================ */
 (function (global) {
   'use strict';
   var OD = global.OurDays;
   var Utils = OD.Utils;
   var State = OD.State;
+  var LS = OD.LS;
   var UI = global.UI;
 
   global.Views = global.Views || {};
@@ -16,6 +24,12 @@
     7: '一周', 30: '满月', 50: '五十天', 100: '百天', 365: '一周年', 520: '我爱你',
     666: '666天', 999: '长长久久', 1000: '千天', 1314: '一生一世', 2000: '两千天', 3650: '十周年'
   };
+
+  /* 顺序持久化 */
+  var ORDER_KEY = 'annivOrder';     // → localStorage: od.annivOrder
+  var G_CUSTOM = 'c';               // key 前缀：自定义
+  var G_AUTO = 'a';                 // key 前缀：自动
+  var GRIP = '≡';                   // 拖拽把手字形
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -65,6 +79,47 @@
     return best;
   }
 
+  /* ---------- 顺序持久化 ---------- */
+  function readOrder() {
+    var v = LS.get(ORDER_KEY, []);
+    return Object.prototype.toString.call(v) === '[object Array]'
+      ? v.filter(function (k) { return typeof k === 'string' && k; })
+      : [];
+  }
+  function writeOrder(keys) { LS.set(ORDER_KEY, keys || []); }
+
+  /* 合并为最终展示列表：自定义（前） + 自动（后），组内按持久化顺序，
+     未记录的条目保持默认次序并追加到本组已排序条目之后。 */
+  function buildList() {
+    var rank = {};
+    readOrder().forEach(function (k, i) { if (rank[k] === undefined) rank[k] = i; });
+
+    function stableSort(items) {
+      return items.map(function (it, i) { return { it: it, idx: i }; }).sort(function (a, b) {
+        var ra = rank[a.it.key], rb = rank[b.it.key];
+        if (ra === undefined && rb === undefined) return a.idx - b.idx;
+        if (ra === undefined) return 1;
+        if (rb === undefined) return -1;
+        return ra - rb;
+      }).map(function (x) { return x.it; });
+    }
+
+    var customItems = stableSort(customList().map(function (c) {
+      return {
+        kind: 'custom', key: G_CUSTOM + ':' + c.id, id: c.id,
+        title: c.title, dateStr: c.date, note: c.note || ''
+      };
+    }));
+    var autoItems = stableSort(collectAuto().map(function (a) {
+      return {
+        kind: 'auto', key: G_AUTO + ':' + a.n, n: a.n,
+        dateStr: Utils.fmtInput(a.date), diff: a.diff
+      };
+    }));
+    return { customs: customItems, autos: autoItems, all: customItems.concat(autoItems) };
+  }
+
+  /* ---------- 渲染 ---------- */
   function renderHero() {
     var hero = document.getElementById('anniv-hero');
     var cand = heroCandidate(collectAuto(), customList());
@@ -86,62 +141,193 @@
       '<div class="nc-btn-row"><button class="btn btn-soft btn-sm" data-share-hero>生成分享卡</button></div>';
   }
 
-  function renderAuto() {
-    var box = document.getElementById('auto-anniv-list');
-    var html = '';
-    collectAuto().forEach(function (a) {
-      var passed = a.diff < 0;
-      var isKey = OD.AUTO_HIGHLIGHT.indexOf(a.n) > -1;
-      var shareBtn = passed ? '' : '<button class="ai-del" data-share-auto="' + a.n + '" aria-label="生成分享卡">🖼</button>';
-      html +=
-        '<div class="anniv-item' + (passed ? ' passed' : '') + '" data-auto="' + a.n + '">' +
-          '<span class="ai-icon">💕</span>' +
-          '<div class="ai-main">' +
-            '<div class="ai-title">' + autoTitle(a.n) + (isKey ? '<span class="anniv-flag">重点</span>' : '') + '</div>' +
-            '<div class="ai-date">' + dateCNOf(Utils.fmtInput(a.date)) + '</div>' +
-          '</div>' +
-          '<div class="ai-count">' + countText(a.diff) + '</div>' +
-          shareBtn +
-        '</div>';
-    });
-    box.innerHTML = html;
+  /* 双人名字（引导页/编辑资料设置）；未设置时整行隐藏，排版与旧版一致 */
+  function renderNames() {
+    var el = document.getElementById('anniv-names');
+    if (!el) return;
+    var pn = Utils.pairNames();
+    el.textContent = pn.has ? pn.text : '';
+    el.hidden = !pn.has;
   }
 
-  function renderCustom() {
-    var box = document.getElementById('custom-anniv-list');
-    var customs = customList();
-    if (!customs.length) {
-      box.innerHTML =
-        '<div class="anniv-item" style="justify-content:center;cursor:default">' +
+  function customRowHtml(it) {
+    var diff = Utils.diffDaysFromToday(Utils.parseDate(it.dateStr));
+    return '<div class="anniv-item" data-custom="' + esc(it.id) + '" data-key="' + esc(it.key) + '">' +
+      '<span class="ai-grip" data-grip role="button" aria-label="按住拖动排序" tabindex="-1">' + GRIP + '</span>' +
+      '<span class="ai-icon">💝</span>' +
+      '<div class="ai-main">' +
+        '<div class="ai-title">' + esc(it.title) + '</div>' +
+        '<div class="ai-date">' + dateCNOf(it.dateStr) + (it.note ? ' · ' + esc(it.note) : '') + '</div>' +
+      '</div>' +
+      '<div class="ai-count">' + countText(diff) + '</div>' +
+      (diff >= 0 ? '<button class="ai-del" data-share-custom="' + esc(it.id) + '" aria-label="生成分享卡">🖼</button>' : '') +
+      '<button class="ai-del" data-custom-del="' + esc(it.id) + '" aria-label="移除">🗑</button>' +
+    '</div>';
+  }
+
+  function autoRowHtml(it) {
+    var passed = it.diff < 0;
+    var isKey = OD.AUTO_HIGHLIGHT.indexOf(it.n) > -1;
+    var shareBtn = passed ? '' : '<button class="ai-del" data-share-auto="' + it.n + '" aria-label="生成分享卡">🖼</button>';
+    return '<div class="anniv-item' + (passed ? ' passed' : '') + '" data-auto="' + it.n + '" data-key="' + esc(it.key) + '">' +
+      '<span class="ai-grip" data-grip role="button" aria-label="按住拖动排序" tabindex="-1">' + GRIP + '</span>' +
+      '<span class="ai-icon">💕</span>' +
+      '<div class="ai-main">' +
+        '<div class="ai-title">' + autoTitle(it.n) + (isKey ? '<span class="anniv-flag">重点</span>' : '') + '</div>' +
+        '<div class="ai-date">' + dateCNOf(it.dateStr) + '</div>' +
+      '</div>' +
+      '<div class="ai-count">' + countText(it.diff) + '</div>' +
+      shareBtn +
+    '</div>';
+  }
+
+  function renderList() {
+    var box = document.getElementById('anniv-list');
+    if (!box) return;
+    var data = buildList();
+    var html = '<div class="anniv-group-title">自定义纪念日</div>';
+    if (!data.customs.length) {
+      html += '<div class="anniv-item anniv-empty" style="justify-content:center;cursor:default">' +
         '<div class="ai-title" style="color:var(--sub);font-weight:400">还没有专属纪念日，点右上角 ＋ 添加一个吧</div></div>';
-      return;
+    } else {
+      html += data.customs.map(customRowHtml).join('');
     }
-    var html = '';
-    customs.forEach(function (c) {
-      var diff = Utils.diffDaysFromToday(Utils.parseDate(c.date));
-      html +=
-        '<div class="anniv-item" data-custom="' + esc(c.id) + '">' +
-          '<span class="ai-icon">💝</span>' +
-          '<div class="ai-main">' +
-            '<div class="ai-title">' + esc(c.title) + '</div>' +
-            '<div class="ai-date">' + dateCNOf(c.date) + (c.note ? ' · ' + esc(c.note) : '') + '</div>' +
-          '</div>' +
-          '<div class="ai-count">' + countText(diff) + '</div>' +
-          (diff >= 0 ? '<button class="ai-del" data-share-custom="' + esc(c.id) + '" aria-label="生成分享卡">🖼</button>' : '') +
-          '<button class="ai-del" data-custom-del="' + esc(c.id) + '" aria-label="移除">🗑</button>' +
-        '</div>';
-    });
+    html += '<div class="anniv-group-title">自动纪念日</div>' + data.autos.map(autoRowHtml).join('');
     box.innerHTML = html;
   }
 
   function render() {
     var couple = State.couple();
     if (!couple) { global.Nav.go('/onboarding'); return; }
+    renderNames();
     renderHero();
-    renderAuto();
-    renderCustom();
+    renderList();
   }
 
+  /* ---------- 拖拽排序（鼠标 + 触摸） ----------
+     · 仅在把手 .ai-grip 上按下才进入拖拽，避免与「点行看详情 / 点按钮」冲突；
+     · 移动超过 6px 才真正激活，轻点不改变顺序；
+     · 只允许同组互换位置（自定义 / 自动各自一组，跨组落点回退为本组末尾）；
+     · 松手即把当前 DOM 顺序写回 od.annivOrder，并重渲染保证与存储一致。 */
+  var drag = null;
+  var suppressClickUntil = 0;
+
+  function listBox() { return document.getElementById('anniv-list'); }
+
+  function keyRows() {
+    var box = listBox();
+    if (!box) return [];
+    return Array.prototype.slice.call(box.querySelectorAll('.anniv-item[data-key]'));
+  }
+
+  function groupOf(row) {
+    var k = row.getAttribute('data-key') || '';
+    return k.charAt(0);
+  }
+
+  function clearMark() {
+    var rows = keyRows();
+    for (var i = 0; i < rows.length; i++) rows[i].classList.remove('dragging');
+  }
+
+  function dragBegin(cx, cy, target) {
+    var grip = target && target.closest ? target.closest('[data-grip]') : null;
+    if (!grip) return false;
+    var row = grip.closest ? grip.closest('.anniv-item[data-key]') : null;
+    if (!row) return false;
+    drag = { row: row, group: groupOf(row), active: false, sx: cx, sy: cy };
+    return true;
+  }
+
+  function dragMove(cx, cy) {
+    if (!drag) return;
+    if (!drag.active) {
+      if (Math.abs(cy - drag.sy) < 6 && Math.abs(cx - drag.sx) < 6) return;
+      drag.active = true;
+      drag.row.classList.add('dragging');
+      drag.row.setAttribute('aria-grabbed', 'true');
+    }
+    var rows = keyRows();
+    var target = null;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r === drag.row || groupOf(r) !== drag.group) continue;
+      var rect = r.getBoundingClientRect();
+      if (cy < rect.top + rect.height / 2) { target = r; break; }
+    }
+    var box = listBox();
+    if (!box) return;
+    if (target) {
+      if (target.previousElementSibling !== drag.row) box.insertBefore(drag.row, target);
+    } else {
+      // 落到本组末尾：插到本组之后的第一个异组节点之前
+      var boundary = null, seenSame = false;
+      for (var j = 0; j < rows.length; j++) {
+        var rj = rows[j];
+        if (rj === drag.row) continue;
+        if (groupOf(rj) === drag.group) { seenSame = true; continue; }
+        if (seenSame) { boundary = rj; break; }
+      }
+      if (boundary) {
+        if (drag.row.nextElementSibling !== boundary) box.insertBefore(drag.row, boundary);
+      } else if (box.lastElementChild !== drag.row) {
+        box.appendChild(drag.row);
+      }
+    }
+  }
+
+  function dragEnd() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    d.row.classList.remove('dragging');
+    d.row.removeAttribute('aria-grabbed');
+    if (!d.active) return;                    // 轻点：不改顺序，交给 click 处理
+    clearMark();
+    var keys = keyRows().map(function (r) { return r.getAttribute('data-key'); });
+    writeOrder(keys);
+    suppressClickUntil = Date.now() + 400;    // 抑制拖拽尾部产生的 click
+    renderList();
+  }
+
+  function bindDrag() {
+    var box = listBox();
+    if (!box) return;
+
+    // 起点：把手（事件委托，列表 innerHTML 重建后依然有效）
+    box.addEventListener('mousedown', function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (dragBegin(e.clientX, e.clientY, e.target)) e.preventDefault();
+    });
+    box.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) return;
+      var t = e.touches[0];
+      if (dragBegin(t.clientX, t.clientY, e.target) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    // 过程 / 结束：挂到 document，手指移出列表也能继续拖
+    document.addEventListener('mousemove', function (e) {
+      if (drag) dragMove(e.clientX, e.clientY);
+    });
+    document.addEventListener('mouseup', function () {
+      if (drag) dragEnd();
+    });
+    document.addEventListener('touchmove', function (e) {
+      if (!drag) return;
+      var t = e.touches[0];
+      if (!t) return;
+      dragMove(t.clientX, t.clientY);
+      if (drag && drag.active && e.cancelable) e.preventDefault(); // 激活后不滚页面
+    }, { passive: false });
+    document.addEventListener('touchend', function () {
+      if (drag) dragEnd();
+    });
+    document.addEventListener('touchcancel', function () {
+      if (drag) dragEnd();
+    });
+  }
+
+  /* ---------- 增删 ---------- */
   function openAdd() {
     document.getElementById('anniv-sheet-title').textContent = '添加纪念日';
     document.getElementById('anniv-name').value = '';
@@ -177,6 +363,8 @@
     }).then(function (ok) {
       if (!ok) return;
       State.saveCustomAnniv(State.customAnniv().filter(function (x) { return x.id !== id; }));
+      // 同步清理顺序记录中的该条目
+      writeOrder(readOrder().filter(function (k) { return k !== (G_CUSTOM + ':' + id); }));
       UI.toast('已移除');
       render();
     });
@@ -201,9 +389,12 @@
   function bind() {
     document.getElementById('anniv-add').addEventListener('click', openAdd);
     document.getElementById('anniv-save').addEventListener('click', saveAdd);
+    bindDrag();
 
     document.getElementById('page-anniv').addEventListener('click', function (e) {
+      if (Date.now() < suppressClickUntil) return;   // 刚拖动过：忽略尾巴 click
       var t = e.target;
+      if (t.closest && t.closest('[data-grip]')) return; // 把手上的点击不触发行详情
       var btn = t.closest ? t.closest('[data-share-hero],[data-share-auto],[data-share-custom],[data-custom-del]') : null;
       if (btn) {
         var hero = btn.getAttribute('data-share-hero') !== null;

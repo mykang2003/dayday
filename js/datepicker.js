@@ -8,8 +8,17 @@
 (function (global) {
   'use strict';
   var UI = global.UI;
+  var OD = global.OurDays; // 离线农历（js/lunar.js）；未加载时自动降级为不显示农历
 
   var SHEET_ID = 'datepicker-sheet';
+
+  /* 农历短文本：初一显示月名（闰月为「闰X月」），其余显示日名；
+     超出算法覆盖范围（1901-02-19 ~ 2100-12-31）或模块缺失时返回 '' */
+  function lunarCell(date) {
+    var L = OD && OD.Lunar;
+    if (!L || typeof L.cellOf !== 'function') return '';
+    try { return L.cellOf(date) || ''; } catch (e) { return ''; }
+  }
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
   function toISO(d) {
@@ -146,7 +155,7 @@
     titleEl.innerHTML = yearPart + monthPart;
   }
 
-  /* 日历视图（默认） */
+  /* 日历视图（默认）：公历数字 + 下方农历（初一显示月名、闰月标「闰X月」、其余显示日名） */
   function renderDayGrid(gridEl) {
     var first = new Date(viewY, viewM, 1);
     var lead = (first.getDay() + 6) % 7; // 周一为一周起点
@@ -163,10 +172,15 @@
       var cls = 'dp-cell';
       if (sameDate(date, today)) cls += ' dp-today';
       if (sameDate(date, selected)) cls += ' dp-selected';
-      html += '<button type="button" class="' + cls + '" data-date="' + iso + '">' + d + '</button>';
+      var lu = lunarCell(date);
+      html += '<button type="button" class="' + cls + '" data-date="' + iso + '"' +
+        (lu ? ' aria-label="' + iso + ' 农历' + lu + '"' : '') + '>' +
+        '<span class="dp-d">' + d + '</span>' +
+        (lu ? '<span class="dp-l">' + lu + '</span>' : '') +
+        '</button>';
     }
     for (var k = lead + daysInMonth; k < total; k++) html += '<span class="dp-cell dp-void"></span>';
-    gridEl.className = 'dp-grid';
+    gridEl.className = 'dp-grid dp-grid-day';
     gridEl.innerHTML = html;
   }
 

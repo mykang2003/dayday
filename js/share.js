@@ -97,13 +97,34 @@
     ctx.globalAlpha = 1;
   }
 
+  var CJK = '"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+
+  /* 页脚：双人名字（可选）+ 品牌 + 一句话
+     双人名字来自引导页/编辑资料设置（OurDays.Utils.pairNames），未设置时该行整体省略，
+     页脚回到原有两行布局（老用户排版不变）。名字过长时按可用宽度等比缩小字号，防溢出出血。 */
   function paintFooter(ctx, dark) {
+    var OD = global.OurDays || {};
+    var pn = (OD.Utils && typeof OD.Utils.pairNames === 'function') ? OD.Utils.pairNames() : { has: false, text: '' };
+    var NAME_BASE = 30, NAME_MIN = 18, SAFE = 80;
+
     ctx.textAlign = 'center';
+
+    if (pn.has) {
+      ctx.fillStyle = dark ? 'rgba(255,255,255,.85)' : themeColor('share-foot');
+      ctx.font = 'bold ' + NAME_BASE + 'px ' + CJK;
+      var nameW = ctx.measureText(pn.text).width;
+      var maxW = W - SAFE * 2;
+      if (nameW > maxW) {
+        ctx.font = 'bold ' + Math.max(NAME_MIN, Math.floor(NAME_BASE * maxW / nameW)) + 'px ' + CJK;
+      }
+      ctx.fillText(pn.text, W / 2, H - 146, maxW);
+    }
+
     ctx.fillStyle = dark ? 'rgba(255,255,255,.85)' : themeColor('share-foot');
-    ctx.font = 'bold 40px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+    ctx.font = 'bold 40px ' + CJK;
     ctx.fillText('和你第N天', W / 2, H - 96);
     ctx.fillStyle = dark ? 'rgba(255,255,255,.55)' : themeColor('share-foot-sub');
-    ctx.font = '24px "PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+    ctx.font = '24px ' + CJK;
     ctx.fillText('记录你和TA的每一天', W / 2, H - 52);
   }
 

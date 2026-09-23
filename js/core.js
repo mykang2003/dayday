@@ -285,6 +285,22 @@
     }
   };
 
+  /* ---------- 双人称呼 ----------
+     引导页 / 编辑资料里设置的两个人名字（couple.myName / couple.taName）。
+     返回 { my, ta, has, text }：都没设置时 has=false，调用方应隐藏对应展示位，
+     保证未设置昵称的老用户页面排版不变。 */
+  function pairNames() {
+    var c = State.couple() || {};
+    var my = String(c.myName == null ? '' : c.myName).trim();
+    var ta = String(c.taName == null ? '' : c.taName).trim();
+    return {
+      my: my,
+      ta: ta,
+      has: !!(my || ta),
+      text: (my && ta) ? (my + ' ♥ ' + ta) : (my || ta)
+    };
+  }
+
   global.OurDays = {
     LS: LS,
     PhotoStore: PhotoStore,
@@ -292,7 +308,7 @@
       parseDate: parseDate, fmtCN: fmtCN, fmtDot: fmtDot, fmtInput: fmtInput,
       today: today, dayNumber: dayNumber, nthDayDate: nthDayDate,
       diffDaysFromToday: diffDaysFromToday, pad: pad, uid: uid, clone: clone,
-      fitNum: fitNum, numSizeClass: numSizeClass
+      fitNum: fitNum, numSizeClass: numSizeClass, pairNames: pairNames
     },
     AUTO_ANNIV: AUTO_ANNIV,
     AUTO_HIGHLIGHT: AUTO_HIGHLIGHT,

@@ -39,6 +39,13 @@
     var d = Utils.parseDate(dateStr);
     return d ? (Utils.fmtCN(d) + ' · ' + weekdayOf(d)) : String(dateStr || '');
   }
+  /* 日期行 HTML（hero 主卡片 / 列表项）："· 周X" 包进 .ai-dow 整体不换行，
+     窄屏（含 320px）空间不足时在"·"前整体换行，避免"周五/周一"被拆字截断 */
+  function dateCNHtml(dateStr) {
+    var d = Utils.parseDate(dateStr);
+    if (!d) return esc(dateStr || '');
+    return esc(Utils.fmtCN(d)) + '<span class="ai-dow"> · ' + weekdayOf(d) + '</span>';
+  }
   function countText(diff) {
     if (diff > 0) return '还有 ' + diff + ' 天';
     if (diff === 0) return '就是今天 ❤️';
@@ -136,7 +143,7 @@
     hero.innerHTML =
       '<div class="nah-label">💕 下一个特别日子</div>' +
       '<div class="nah-title">' + esc(title) + '</div>' +
-      '<div class="nah-date">' + dateCNOf(dateStr) + '</div>' +
+      '<div class="nah-date">' + dateCNHtml(dateStr) + '</div>' +
       '<div class="nah-days">' + countText(cand.diff) + '</div>' +
       '<div class="nc-btn-row"><button class="btn btn-soft btn-sm" data-share-hero>生成分享卡</button></div>';
   }
@@ -157,7 +164,7 @@
       '<span class="ai-icon">💝</span>' +
       '<div class="ai-main">' +
         '<div class="ai-title">' + esc(it.title) + '</div>' +
-        '<div class="ai-date">' + dateCNOf(it.dateStr) + (it.note ? ' · ' + esc(it.note) : '') + '</div>' +
+        '<div class="ai-date">' + dateCNHtml(it.dateStr) + (it.note ? ' · ' + esc(it.note) : '') + '</div>' +
       '</div>' +
       '<div class="ai-count">' + countText(diff) + '</div>' +
       (diff >= 0 ? '<button class="ai-del" data-share-custom="' + esc(it.id) + '" aria-label="生成分享卡">🖼</button>' : '') +
@@ -174,7 +181,7 @@
       '<span class="ai-icon">💕</span>' +
       '<div class="ai-main">' +
         '<div class="ai-title">' + autoTitle(it.n) + (isKey ? '<span class="anniv-flag">重点</span>' : '') + '</div>' +
-        '<div class="ai-date">' + dateCNOf(it.dateStr) + '</div>' +
+        '<div class="ai-date">' + dateCNHtml(it.dateStr) + '</div>' +
       '</div>' +
       '<div class="ai-count">' + countText(it.diff) + '</div>' +
       shareBtn +

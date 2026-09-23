@@ -12,6 +12,9 @@
 <meta name="format-detection" content="telephone=no,email=no,address=no">
 <meta name="color-scheme" content="light dark">
 <title>和你第N天 · 记录和你在一起的每一天</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -80,16 +83,16 @@
     <div class="hero-num" id="home-days">0</div>
     <div class="hero-unit">天</div>
     <div class="hero-range" id="home-range"></div>
+    <div class="hero-duration" id="home-duration" hidden></div>
     <div class="hero-tip" id="home-today-tip"></div>
+    <div class="hero-birthday" id="home-birthday" hidden></div>
   </div>
 
   <div class="quote-card" id="home-quote"></div>
 
-  <div class="next-card" id="home-next"></div>
+  <div class="countdown-widget" id="home-countdown" hidden></div>
 
-  <div class="home-share-entry">
-    <button class="btn btn-soft btn-sm" data-open-share="day">🖼 生成今日分享卡</button>
-  </div>
+  <div class="next-card" id="home-next"></div>
 
   <div class="quick-grid">
     <button class="quick-item" data-nav="memory/new"><span class="quick-icon">📸</span><span>记录回忆</span></button>
@@ -176,7 +179,7 @@
       <div class="uploader-main">
         <div class="uploader-icon">📷</div>
         <div>添加照片（最多 9 张）</div>
-        <div class="uploader-sub">支持常见图片格式，自动压缩</div>
+        <div class="uploader-sub">原图保存，不压缩画质</div>
       </div>
       <input type="file" id="mem-file" accept="image/*" multiple hidden>
     </div>
@@ -243,7 +246,6 @@
 
   <div class="detail-actions">
     <button class="btn btn-soft" id="detail-edit">编辑</button>
-    <button class="btn btn-soft" id="detail-share">生成分享卡</button>
     <button class="btn btn-soft" id="detail-ai-rewrite">✨ AI重新写</button>
     <button class="btn btn-danger-soft" id="detail-delete">删除</button>
   </div>
@@ -256,14 +258,12 @@
     <button class="icon-btn" id="anniv-add" aria-label="添加纪念日">＋</button>
   </header>
 
-  <div class="anniv-names" id="anniv-names" hidden></div>
-
   <div class="next-anniv-hero" id="anniv-hero"></div>
 
   <div class="section-block">
     <div class="section-title-row">
       <h3>全部纪念日</h3>
-      <span class="section-hint">按住 ≡ 拖动排序</span>
+      <span class="section-hint">按住卡片拖动排序</span>
     </div>
     <div id="anniv-list" class="anniv-list"></div>
   </div>
@@ -288,8 +288,30 @@
       </div>
     </div>
     <div class="field">
+      <label>封面图 <span class="optional">选填</span></label>
+      <div class="cover-uploader" id="anniv-cover">
+        <div class="cover-empty" id="anniv-cover-empty">
+          <div class="cover-ico">🖼️</div>
+          <div class="cover-txt">选择一张封面图</div>
+          <div class="cover-sub">不填则使用默认图标</div>
+        </div>
+        <img id="anniv-cover-preview" class="cover-preview" alt="封面预览" hidden>
+        <button type="button" class="cover-remove" id="anniv-cover-remove" hidden aria-label="移除封面">✕</button>
+        <input type="file" id="anniv-cover-file" accept="image/*" hidden>
+      </div>
+    </div>
+    <div class="field">
       <label>备注</label>
       <input type="text" class="input" id="anniv-note" maxlength="60" placeholder="选填">
+    </div>
+    <div class="field">
+      <label>提前提醒 <span class="optional">选填</span></label>
+      <div class="mood-row" id="anniv-remind">
+        <button type="button" class="mood-chip" data-remind="0">不提醒</button>
+        <button type="button" class="mood-chip" data-remind="1">提前1天</button>
+        <button type="button" class="mood-chip" data-remind="3">提前3天</button>
+        <button type="button" class="mood-chip" data-remind="7">提前7天</button>
+      </div>
     </div>
     <button class="btn btn-primary btn-lg btn-block" id="anniv-save">保存</button>
   </div>
@@ -307,7 +329,9 @@
   </div>
 
   <div class="settings-list">
+    <button class="setting-item" id="profile-share">生成今日分享卡<span class="setting-value">发给 TA</span></button>
     <button class="setting-item" id="profile-edit">编辑情侣资料</button>
+    <button class="setting-item" id="profile-birthday">情侣生日<span class="setting-value" id="profile-birthday-label">未设置</span></button>
     <button class="setting-item" id="profile-date">在一起日期<span class="setting-value" id="profile-date-label"></span></button>
     <button class="setting-item" id="profile-theme">更换主题<span class="setting-value" id="theme-label"></span></button>
     <button class="setting-item" id="profile-ai">AI 设置<span class="setting-value" id="ai-status"></span></button>
@@ -323,6 +347,32 @@
     <div class="about-ver">v1.0.0 · MVP</div>
   </div>
 </section>
+
+<!-- 情侣生日弹窗 -->
+<div class="sheet" id="birthday-sheet" hidden>
+  <div class="sheet-head">
+    <div class="sheet-title">情侣生日</div>
+    <button class="icon-btn sheet-close" data-close-sheet aria-label="关闭">✕</button>
+  </div>
+  <div class="sheet-body">
+    <p class="sheet-desc">设置两个人的生日后，首页会显示距离 TA 生日的倒计时。</p>
+    <div class="field">
+      <label>我的生日</label>
+      <div class="date-field">
+        <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+        <input type="text" class="input date-pick" id="bd-my" placeholder="点击选择日期" readonly data-date-open="bd-my">
+      </div>
+    </div>
+    <div class="field">
+      <label>TA 的生日</label>
+      <div class="date-field">
+        <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+        <input type="text" class="input date-pick" id="bd-ta" placeholder="点击选择日期" readonly data-date-open="bd-ta">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-lg btn-block" id="birthday-save">保存</button>
+  </div>
+</div>
 
 <!-- 主题选择弹窗 -->
 <div class="sheet" id="theme-sheet" hidden>
@@ -372,6 +422,11 @@
     <div class="page-title">分享卡</div>
     <button class="icon-btn" id="share-close" aria-label="关闭">✕</button>
   </header>
+  <div class="share-templates" id="share-templates">
+    <button type="button" class="st-item is-active" data-st="sunny">☀️ 暖阳</button>
+    <button type="button" class="st-item" data-st="night">🌙 暗夜</button>
+    <button type="button" class="st-item" data-st="sakura">🌸 樱花</button>
+  </div>
   <div class="share-stage">
     <canvas id="share-canvas" width="750" height="1200"></canvas>
     <div class="share-loading" id="share-loading">正在生成海报…</div>
@@ -384,10 +439,10 @@
 
 <!-- ================= 通用 ================= -->
 <nav class="bottom-nav" id="bottom-nav" hidden>
-  <button class="nav-item" data-nav="home"><span class="nav-ico">🏠</span><span>首页</span></button>
-  <button class="nav-item" data-nav="story"><span class="nav-ico">📖</span><span>我们</span></button>
-  <button class="nav-item" data-nav="anniv"><span class="nav-ico">💕</span><span>纪念日</span></button>
-  <button class="nav-item" data-nav="profile"><span class="nav-ico">👤</span><span>我的</span></button>
+  <button class="nav-item" data-nav="home"><span class="nav-ico">🏠</span><span class="nav-label">首页</span></button>
+  <button class="nav-item" data-nav="story"><span class="nav-ico">📖</span><span class="nav-label">我们</span></button>
+  <button class="nav-item" data-nav="anniv"><span class="nav-ico">💕</span><span class="nav-label">纪念日</span></button>
+  <button class="nav-item" data-nav="profile"><span class="nav-ico">👤</span><span class="nav-label">我的</span></button>
 </nav>
 
 <div class="toast" id="toast" hidden></div>

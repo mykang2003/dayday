@@ -75,6 +75,7 @@
   </header>
 
   <div class="home-hero">
+    <div class="hero-names" id="home-names" hidden></div>
     <div class="hero-sub">我们已经在一起</div>
     <div class="hero-num" id="home-days">0</div>
     <div class="hero-unit">天</div>
@@ -255,16 +256,16 @@
     <button class="icon-btn" id="anniv-add" aria-label="添加纪念日">＋</button>
   </header>
 
+  <div class="anniv-names" id="anniv-names" hidden></div>
+
   <div class="next-anniv-hero" id="anniv-hero"></div>
 
   <div class="section-block">
-    <div class="section-title-row"><h3>自动纪念日</h3></div>
-    <div id="auto-anniv-list" class="anniv-list"></div>
-  </div>
-
-  <div class="section-block">
-    <div class="section-title-row"><h3>自定义纪念日</h3></div>
-    <div id="custom-anniv-list" class="anniv-list"></div>
+    <div class="section-title-row">
+      <h3>全部纪念日</h3>
+      <span class="section-hint">按住 ≡ 拖动排序</span>
+    </div>
+    <div id="anniv-list" class="anniv-list"></div>
   </div>
 </section>
 
@@ -432,6 +433,7 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/lunar.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/datepicker.js"></script>
 <script src="js/ai.js"></script>

@@ -202,23 +202,51 @@
     else text = d + ' 天';
     return { y: y, m: m, d: d, text: text };
   }
-  /* 下一个生日：接受 'YYYY-MM-DD' 或 'MM-DD'，今年已过则取明年；返回 {date, diff} */
+  /* 下一个生日：接受 'YYYY-MM-DD'、'MM-DD'（公历）或 'L:MM-DD'（农历）
+     公历：今年已过则取明年；
+     农历：对当年与次年分别用 toSolarDate 换算公历日期，取距离今天最近且未过的；
+     返回 {date, diff, month, day, isLunar} */
   function nextBirthday(bdStr) {
     if (!bdStr) return null;
-    var parts = String(bdStr).split('-');
+    var isLunar = false;
+    var s = String(bdStr);
+    if (s.indexOf('L:') === 0) { isLunar = true; s = s.slice(2); }
+    var parts = s.split('-');
     var month = 0, day = 0;
     if (parts.length === 3) { month = +parts[1]; day = +parts[2]; }
     else if (parts.length === 2) { month = +parts[0]; day = +parts[1]; }
     if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return null;
     var now = today();
     var y = now.getFullYear();
-    var cand = new Date(y, month - 1, day);
-    var diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
-    if (diff < 0) {
-      cand = new Date(y + 1, month - 1, day);
-      diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
+
+    if (!isLunar) {
+      var cand = new Date(y, month - 1, day);
+      var diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
+      if (diff < 0) {
+        cand = new Date(y + 1, month - 1, day);
+        diff = Math.round((toUTCDate(cand) - toUTCDate(now)) / 86400000);
+      }
+      return { date: cand, diff: diff, month: month, day: day, isLunar: false };
     }
-    return { date: cand, diff: diff, month: month, day: day };
+
+    var Lunar = global.OurDays && global.OurDays.Lunar;
+    if (!Lunar || !Lunar.toSolarDate) return null;
+    var cands = [];
+    var d0 = Lunar.toSolarDate(y, month, day, false);
+    if (d0) cands.push(d0);
+    var d1 = Lunar.toSolarDate(y + 1, month, day, false);
+    if (d1) cands.push(d1);
+    if (!cands.length) return null;
+    var best = null, bestDiff = -1;
+    for (var i = 0; i < cands.length; i++) {
+      var dd = Math.round((toUTCDate(cands[i]) - toUTCDate(now)) / 86400000);
+      if (dd >= 0 && (best === null || dd < bestDiff)) { best = cands[i]; bestDiff = dd; }
+    }
+    if (best === null) {
+      best = cands[0];
+      bestDiff = Math.round((toUTCDate(best) - toUTCDate(now)) / 86400000);
+    }
+    return { date: best, diff: bestDiff, month: month, day: day, isLunar: true };
   }
 
   /* ---------- 常量 ---------- */
@@ -308,6 +336,29 @@
     },
     saveCustomAnniv: function (list) { LS.set('customAnniv', list); },
 
+    /* 自己的生日自动同步到自定义纪念日：
+       保存 couple（引导页/编辑资料/生日弹窗）后调用。
+       以 auto='myBirthday' 标记区分，重复保存先移除旧条目再重建；
+       未设置生日时清掉历史同步条目，避免残留。 */
+    syncMyBirthdayAnniv: function (couple) {
+      var list = LS.get('customAnniv', []).filter(function (x) { return x.auto !== 'myBirthday'; });
+      var mb = couple && couple.myBirthday;
+      if (mb) {
+        var d = birthdayToDate(mb);
+        if (d) {
+          list.push({
+            id: uid('anniv'),
+            title: '我的生日',
+            date: fmtInput(d),
+            note: '自动同步自我的生日',
+            auto: 'myBirthday',
+            createdAt: fmtInput(today())
+          });
+        }
+      }
+      LS.set('customAnniv', list);
+    },
+
     settings: function () {
       return LS.get('settings', { ai: { base: '', model: '', key: '' }, theme: 'cream' });
     },
@@ -322,6 +373,39 @@
       return PhotoStore.clear();
     }
   };
+
+  /* ---------- 生日字符串 → 下一次生日 ----------
+     'MM-DD' 公历 / 'L:MM-DD' 农历；取今年或明年的最近一次（含今天）。
+     无法解析或超出历法支持范围时返回 null。 */
+  function birthdayToDate(mb) {
+    var m = 0, d = 0, isLunar = false;
+    if (typeof mb === 'string' && /^L:\d{2}-\d{2}$/.test(mb)) {
+      isLunar = true;
+      mb = mb.slice(2);
+    }
+    var parts = /^(\d{2})-(\d{2})$/.exec(mb || '');
+    if (!parts) return null;
+    m = parseInt(parts[1], 10);
+    d = parseInt(parts[2], 10);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    var y = new Date().getFullYear();
+    var todayStart = new Date(y, new Date().getMonth(), new Date().getDate());
+    function solar(yy) {
+      var dt;
+      if (isLunar && global.OurDays && global.OurDays.Lunar && global.OurDays.Lunar.toSolarDate) {
+        dt = global.OurDays.Lunar.toSolarDate(yy, m, d, false);
+        if (!dt || isNaN(dt.getTime())) return null;
+      } else if (isLunar) {
+        return null;
+      } else {
+        dt = new Date(yy, m - 1, d);
+      }
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    }
+    var cur = solar(y);
+    if (!cur) return null;
+    return cur < todayStart ? (solar(y + 1) || cur) : cur;
+  }
 
   /* ---------- 双人称呼 ----------
      引导页 / 编辑资料里设置的两个人名字（couple.myName / couple.taName）。

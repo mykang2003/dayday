@@ -151,11 +151,8 @@
 
   function customRowHtml(it) {
     var diff = Utils.diffDaysFromToday(Utils.parseDate(it.dateStr));
-    /* 封面缩略：有封面（coverId）显示原图缩略，点击可放大；无封面用默认 💝。
-       缩略图实际 dataUrl 由 renderList 后 attachCovers 异步注入（PhotoStore 为异步 API）。 */
-    var coverHtml = it.coverId
-      ? '<span class="ai-icon anniv-cover-wrap" data-cover-open="' + esc(it.id) + '"><img class="anniv-cover-thumb" data-cover-id="' + esc(it.coverId) + '" alt=""></span>'
-      : '<span class="ai-icon">💝</span>';
+    /* 封面功能已移除：一律使用默认图标（已存储的 coverId 读取时忽略，不迁移）。 */
+    var coverHtml = '<span class="ai-icon">💝</span>';
     var remindHtml = it.remind > 0
       ? '<span class="anniv-flag">🔔 提前' + it.remind + '天</span>'
       : '';
@@ -202,19 +199,6 @@
     }
     html += '<div class="anniv-group-title">自动纪念日</div>' + data.autos.map(autoRowHtml).join('');
     box.innerHTML = html;
-    attachCovers(box);
-  }
-
-  /* 封面缩略图异步注入：PhotoStore.get 完成后把 dataUrl 填进 <img>，避免阻塞首屏渲染 */
-  function attachCovers(box) {
-    var imgs = box ? box.querySelectorAll('.anniv-cover-thumb') : [];
-    for (var i = 0; i < imgs.length; i++) (function (img) {
-      var id = img.getAttribute('data-cover-id');
-      if (!id) return;
-      OD.PhotoStore.get(id).then(function (dataUrl) {
-        if (dataUrl) { img.src = dataUrl; img.classList.add('loaded'); }
-      });
-    })(imgs[i]);
   }
 
   function render() {
@@ -224,13 +208,16 @@
     renderList();
   }
 
-  /* ---------- 拖拽排序（鼠标 + 触摸） ----------
-     · 整卡按下即进入拖拽候选，移动超过 6px 才真正激活，轻点（查看详情）不改变顺序；
-    · 按下位置是删除按钮等可交互元素时，不启动拖拽（点击交给按钮处理）；
+  /* ---------- 拖拽排序（鼠标 + 触摸，长按触发） ----------
+     · 按下后长按约 450ms（期间位移不超过 10px）才进入拖拽模式，
+       长按激活瞬间给卡片轻微缩放/阴影提示可拖；未长按即松手/移动视为轻点或滚动；
+     · 按下位置是删除按钮等可交互元素时，不启动拖拽（点击交给按钮处理）；
      · 只允许同组互换位置（自定义 / 自动各自一组，跨组落点回退为本组末尾）；
      · 松手即把当前 DOM 顺序写回 od.annivOrder，并重渲染保证与存储一致。 */
   var drag = null;
   var suppressClickUntil = 0;
+  var LONG_PRESS_MS = 450;     // 长按触发阈值（落在 400-500ms 区间）
+  var LONG_PRESS_MOVE = 10;    // 长按期间位移超过该值则取消长按（视为轻点/滚动）
 
   function listBox() { return document.getElementById('anniv-list'); }
 
@@ -257,17 +244,28 @@
     if (interactive) return false;
     var row = target.closest('.anniv-item[data-key]');
     if (!row) return false;
-    drag = { row: row, group: groupOf(row), active: false, sx: cx, sy: cy };
+    if (drag) { clearTimeout(drag.timer); drag = null; }
+    drag = { row: row, group: groupOf(row), active: false, ready: false, timer: null, sx: cx, sy: cy };
+    /* 长按定时器：到点进入拖拽模式并给出视觉反馈（未长按即松手/移动则取消） */
+    drag.timer = setTimeout(function () {
+      if (!drag || drag.active) return;
+      drag.ready = true;
+      drag.active = true;
+      drag.row.classList.add('dragging');
+      drag.row.setAttribute('aria-grabbed', 'true');
+    }, LONG_PRESS_MS);
     return true;
   }
 
   function dragMove(cx, cy) {
     if (!drag) return;
-    if (!drag.active) {
-      if (Math.abs(cy - drag.sy) < 6 && Math.abs(cx - drag.sx) < 6) return;
-      drag.active = true;
-      drag.row.classList.add('dragging');
-      drag.row.setAttribute('aria-grabbed', 'true');
+    if (!drag.ready) {
+      // 长按未完成：位移超过阈值即取消长按（不拦截轻点与页面滚动）
+      if (Math.abs(cy - drag.sy) >= LONG_PRESS_MOVE || Math.abs(cx - drag.sx) >= LONG_PRESS_MOVE) {
+        clearTimeout(drag.timer);
+        drag = null;
+      }
+      return;
     }
     var rows = keyRows();
     var target = null;
@@ -357,17 +355,6 @@
        · 封面图片本身存入 PhotoStore（与回忆照片同一套 IndexedDB + LS 兜底），条目只存 id，
          导出 JSON 时与回忆一致仅含引用，不把大图塞进 localStorage。 */
   var editingId = null;       // 正在编辑的自定义纪念日 id（null = 新增）
-  var _coverDataUrl = null;   // 本次表单选中的封面（未落库前的内存态）
-
-  function resetCoverUI() {
-    _coverDataUrl = null;
-    var preview = document.getElementById('anniv-cover-preview');
-    var empty = document.getElementById('anniv-cover-empty');
-    var removeBtn = document.getElementById('anniv-cover-remove');
-    if (preview) { preview.hidden = true; preview.removeAttribute('src'); }
-    if (empty) empty.hidden = false;
-    if (removeBtn) removeBtn.hidden = true;
-  }
 
   function openAdd(id) {
     editingId = id || null;
@@ -378,7 +365,6 @@
     nameEl.value = '';
     dateEl.value = '';
     noteEl.value = '';
-    resetCoverUI();
     setRemindActive(0);
     if (editingId) {
       var c = findCustom(editingId);
@@ -388,11 +374,6 @@
         dateEl.value = c.date || '';
         noteEl.value = c.note || '';
         setRemindActive(Number(c.remind) || 0);
-        if (c.coverId) {
-          OD.PhotoStore.get(c.coverId).then(function (dataUrl) {
-            if (dataUrl) { showCoverPreview(dataUrl); }
-          });
-        }
       } else {
         editingId = null;
         title.textContent = '添加纪念日';
@@ -401,16 +382,6 @@
       title.textContent = '添加纪念日';
     }
     UI.openSheet('anniv-sheet');
-  }
-
-  function showCoverPreview(dataUrl) {
-    _coverDataUrl = dataUrl;
-    var preview = document.getElementById('anniv-cover-preview');
-    var empty = document.getElementById('anniv-cover-empty');
-    var removeBtn = document.getElementById('anniv-cover-remove');
-    if (preview) { preview.src = dataUrl; preview.hidden = false; }
-    if (empty) empty.hidden = true;
-    if (removeBtn) removeBtn.hidden = false;
   }
 
   function setRemindActive(v) {
@@ -435,22 +406,15 @@
     if (!dateStr) { UI.toast('选择一个日期'); return; }
     var remind = getRemindValue();
     var list = State.customAnniv();
-    var coverId = '';
 
     if (editingId) {
       var idx = -1;
       for (var i = 0; i < list.length; i++) if (list[i].id === editingId) { idx = i; break; }
       if (idx < 0) { UI.toast('要编辑的纪念日不存在'); return; }
-      coverId = list[idx].coverId || '';
       list[idx].title = name;
       list[idx].date = dateStr;
       list[idx].note = note;
       list[idx].remind = remind;
-      if (_coverDataUrl) {
-        coverId = coverId || Utils.uid('cover');
-        OD.PhotoStore.put(coverId, _coverDataUrl);
-        list[idx].coverId = coverId;
-      }
       State.saveCustomAnniv(list);
       UI.closeSheet('anniv-sheet');
       editingId = null;
@@ -460,17 +424,12 @@
     }
 
     var newId = Utils.uid('anniv');
-    if (_coverDataUrl) {
-      coverId = Utils.uid('cover');
-      OD.PhotoStore.put(coverId, _coverDataUrl);
-    }
     list.push({
       id: newId,
       title: name,
       date: dateStr,
       note: note,
       remind: remind,
-      coverId: coverId || '',
       createdAt: Utils.fmtInput(Utils.today())
     });
     State.saveCustomAnniv(list);
@@ -537,22 +496,6 @@
     document.getElementById('anniv-add').addEventListener('click', function () { openAdd(null); });
     document.getElementById('anniv-save').addEventListener('click', saveAdd);
 
-    /* 封面图上传（G）：FileReader 原图读取，不压缩、不改尺寸，保存时写入 PhotoStore */
-    var coverFile = document.getElementById('anniv-cover-file');
-    if (coverFile) {
-      coverFile.addEventListener('change', function (e) {
-        var f = e.target.files && e.target.files[0];
-        if (!f) return;
-        var reader = new FileReader();
-        reader.onload = function () { showCoverPreview(String(reader.result)); };
-        reader.onerror = function () { UI.toast('读取图片失败，请换一张试试'); };
-        reader.readAsDataURL(f);
-        coverFile.value = '';
-      });
-    }
-    var coverRemove = document.getElementById('anniv-cover-remove');
-    if (coverRemove) coverRemove.addEventListener('click', resetCoverUI);
-
     /* 提醒 chips：点击切换选中 */
     var remindBar = document.getElementById('anniv-remind');
     if (remindBar) {
@@ -571,9 +514,6 @@
       /* 空状态引导按钮 */
       var emptyAdd = t.closest ? t.closest('[data-anniv-empty-add]') : null;
       if (emptyAdd) { openAdd(null); return; }
-      /* 封面缩略点击：全屏查看大图 */
-      var coverOpen = t.closest ? t.closest('[data-cover-open]') : null;
-      if (coverOpen) { openCoverViewer(coverOpen.getAttribute('data-cover-open')); return; }
       var del = t.closest ? t.closest('[data-custom-del]') : null;
       if (del) { removeCustom(del.getAttribute('data-custom-del')); return; }
       var edit = t.closest ? t.closest('[data-custom-edit]') : null;
@@ -594,26 +534,6 @@
           UI.tipSheet('「' + c2.title + '」' + dateCNOf(c2.date) + '\n\n' + countText(Utils.diffDaysFromToday(Utils.parseDate(c2.date))) + (c2.remind > 0 ? '\n\n🔔 提前 ' + c2.remind + ' 天提醒' : '') + (c2.note ? '\n\n' + c2.note : ''));
         }
       }
-    });
-  }
-
-  /* 封面大图查看：全屏遮罩展示原图，点击关闭（原图展示，不做尺寸缩减） */
-  var coverViewer = null;
-  function openCoverViewer(id) {
-    var c = findCustom(id);
-    if (!c || !c.coverId) return;
-    OD.PhotoStore.get(c.coverId).then(function (dataUrl) {
-      if (!dataUrl) { UI.toast('封面图加载失败'); return; }
-      if (coverViewer) { document.body.removeChild(coverViewer); coverViewer = null; }
-      coverViewer = document.createElement('div');
-      coverViewer.className = 'cover-viewer';
-      coverViewer.innerHTML = '<img alt="' + esc(c.title || '纪念日封面') + '">';
-      coverViewer.addEventListener('click', function () {
-        if (coverViewer && coverViewer.parentNode) coverViewer.parentNode.removeChild(coverViewer);
-        coverViewer = null;
-      });
-      document.body.appendChild(coverViewer);
-      coverViewer.querySelector('img').src = dataUrl;
     });
   }
 

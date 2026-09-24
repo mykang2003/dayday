@@ -52,6 +52,53 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* 首页卡片配置：od.homeCards 存各区块显隐开关（默认全部展示）
+     hero=在一起天数 / quote=每日一句 / birthday=TA的生日 / countdown=纪念日倒计时
+     next=下一个特别日子 / quick=快捷入口 / recent=最近回忆 */
+  var HOME_CARDS = [
+    { key: 'hero', label: '在一起天数' },
+    { key: 'quote', label: '每日一句' },
+    { key: 'birthday', label: 'TA 的生日' },
+    { key: 'countdown', label: '纪念日倒计时' },
+    { key: 'next', label: '下一个特别日子' },
+    { key: 'quick', label: '快捷入口' },
+    { key: 'recent', label: '最近回忆' }
+  ];
+  function getHomeCards() {
+    var cfg = OD.LS.get('homeCards', null);
+    var out = {};
+    for (var i = 0; i < HOME_CARDS.length; i++) out[HOME_CARDS[i].key] = true;
+    if (cfg && typeof cfg === 'object') {
+      for (var k in cfg) {
+        if (Object.prototype.hasOwnProperty.call(out, k)) out[k] = !!cfg[k];
+      }
+    }
+    return out;
+  }
+  /* 按配置隐藏/恢复首页卡片：配置关闭时强制隐藏；
+     配置开启时仅恢复无内部显隐逻辑的区块（birthday/countdown 由各自渲染逻辑决定） */
+  function applyHomeCards() {
+    var cfg = getHomeCards();
+    var map = {
+      hero: document.getElementById('home-hero'),
+      quote: document.getElementById('home-quote'),
+      birthday: document.getElementById('home-birthday-card'),
+      countdown: document.getElementById('home-countdown'),
+      next: document.getElementById('home-next'),
+      quick: document.getElementById('home-quick'),
+      recent: document.getElementById('home-recent-block')
+    };
+    for (var k in map) {
+      var el = map[k];
+      if (!el) continue;
+      if (cfg[k] === false) {
+        el.hidden = true;
+      } else if (k !== 'birthday' && k !== 'countdown') {
+        el.hidden = false;
+      }
+    }
+  }
+
   function renderNext(next) {
     var box = document.getElementById('home-next');
     // 标记为居中排版卡片：标题 / 日期 / 剩余天数 / 按钮统一水平居中（样式见 style.css）
@@ -109,19 +156,28 @@
     el.innerHTML = '在一起 <b>' + dur.text + '</b>';
   }
 
-  /* I. 距离 TA 的生日还有 X 天 */
+  /* I. TA 的生日卡片（复用纪念日 hero 卡片风格，置于首页 hero 上方）
+     只展示"TA 的生日"倒计时；未设置时隐藏 */
+  var BIRTH_WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   function renderBirthday() {
-    var el = document.getElementById('home-birthday');
+    var el = document.getElementById('home-birthday-card');
     if (!el) return;
     var couple = State.couple();
     var bd = couple ? Utils.nextBirthday(couple.taBirthday) : null;
     if (!bd) { el.hidden = true; return; }
     el.hidden = false;
-    var pn = Utils.pairNames();
-    var who = (pn.has && pn.ta) ? pn.ta : 'TA';
-    el.textContent = bd.diff === 0
-      ? '🎂 今天就是 ' + who + ' 的生日，快送上祝福！'
-      : '🎂 距离 ' + who + ' 的生日还有 ' + bd.diff + ' 天';
+    var isToday = bd.diff === 0;
+    var lunarSuffix = '';
+    if (bd.isLunar) {
+      var lr = OurDays.Lunar.labelOf(bd.date);
+      lunarSuffix = lr ? '（农历' + lr + '）' : '（农历）';
+    }
+    var label = isToday ? '就是今天 🎂 Ta 的生日' : '距离「Ta 的生日」还有';
+    el.innerHTML =
+      '<div class="cd-label">' + label + '</div>' +
+      '<div class="cd-num">' + bd.diff + '</div>' +
+      '<div class="cd-unit">天</div>' +
+      '<div class="cd-date">' + esc(Utils.fmtCN(bd.date)) + lunarSuffix + '</div>';
   }
 
   function renderRecent() {
@@ -178,9 +234,17 @@
     renderDuration();
     renderBirthday();
     renderRecent();
+    applyHomeCards();
   }
 
   global.Views.home = { render: render };
+
+  /* 首页卡片配置导出（供 profile.js 的"我的/设置"页使用） */
+  global.HomeCards = {
+    defs: HOME_CARDS,
+    get: getHomeCards,
+    save: function (cfg) { OD.LS.set('homeCards', cfg); }
+  };
 
   /* 快捷入口：想个惊喜 */
   function openSurprise() {

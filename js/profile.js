@@ -49,6 +49,8 @@
     for (var i = 0; i < opts.length; i++) {
       opts[i].classList.toggle('active', opts[i].getAttribute('data-theme') === s.theme);
     }
+    var cl = document.getElementById('profile-cards-label');
+    if (cl) cl.textContent = cardsLabel();
   }
 
   function render() {
@@ -67,7 +69,23 @@
     refreshLabels();
   }
 
-  /* 双人生日（I）：设置页展示两人的生日，未设置时提示去设置 */
+  /* 双人生日（I）：设置页展示两人的生日，未设置时提示去设置；
+     农历存 L:MM-DD，展示为「农历八月初十」样式 */
+  function bdDisplay(v) {
+    if (!v) return '';
+    var isLunar = String(v).indexOf('L:') === 0;
+    var s = isLunar ? String(v).slice(2) : String(v);
+    if (isLunar) {
+      var p = s.split('-');
+      var m = +p[0], d = +p[1];
+      var L = OD.Lunar;
+      if (L && L.monthName && L.dayName && m >= 1 && m <= 12 && d >= 1 && d <= 30) {
+        return '农历' + L.monthName(m, false) + L.dayName(d);
+      }
+      return s;
+    }
+    return s;
+  }
   function renderBirthdayLabel(couple) {
     var label = document.getElementById('profile-birthday-label');
     if (!label) return;
@@ -80,8 +98,8 @@
     }
     label.classList.remove('muted');
     var parts = [];
-    if (my) parts.push('我 ' + my);
-    if (ta) parts.push('TA ' + ta);
+    if (my) parts.push('我 ' + bdDisplay(my));
+    if (ta) parts.push('TA ' + bdDisplay(ta));
     label.textContent = parts.join(' · ');
   }
 
@@ -136,6 +154,57 @@
     }
     if (label) label.textContent = '已选择 ' + input.value;
   }
+
+  /* 生日弹窗：公历/农历分段切换（两人各自独立，默认公历） */
+  var bdType = { my: 'solar', ta: 'solar' };
+  /* 农历选中暂存：datepicker 选公历日 → 换算成农历月日，保存时读取 */
+  var bdLunarSel = { my: null, ta: null };
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  /* 解析存储值 L:MM-DD → { m, d }；非农历/非法返回 null */
+  function parseLunarStored(v) {
+    var s = String(v || '');
+    if (s.indexOf('L:') !== 0) return null;
+    var p = s.slice(2).split('-');
+    var m = +p[0], d = +p[1];
+    if (!m || !d || m < 1 || m > 12 || d < 1 || d > 30) return null;
+    return { m: m, d: d };
+  }
+  /* 农历月日 → 今年/明年第一个未过的公历日期（用于日历定位与高亮） */
+  function lunarAnchorDate(md) {
+    var L = OD.Lunar;
+    var today = Utils.today();
+    var y = today.getFullYear();
+    var d1 = L && L.toSolarDate ? L.toSolarDate(y, md.m, md.d, false) : null;
+    if (d1 && d1 >= today) return d1;
+    var d2 = L && L.toSolarDate ? L.toSolarDate(y + 1, md.m, md.d, false) : null;
+    if (d2) return d2;
+    return d1 || today;
+  }
+  /* 农历 input change：datepicker 写回公历 YYYY-MM-DD → 换算农历月日暂存并更新提示 */
+  function onLunarPicked(person, input, label) {
+    var v = String(input.value || '').trim();
+    if (!v) return;
+    var p = v.split('-');
+    if (p.length !== 3) return;
+    var date = new Date(+p[0], +p[1] - 1, +p[2]);
+    var r = OD.Lunar && OD.Lunar.fromDate ? OD.Lunar.fromDate(date) : null;
+    if (!r) { bdLunarSel[person] = null; if (label) label.textContent = '未设置'; UI.toast('所选日期超出农历支持范围'); return; }
+    bdLunarSel[person] = { m: r.m, d: r.d };
+    if (label) label.textContent = '已选择 ' + (r.isLeap ? '闰' : '') + r.monthName + r.dayName;
+  }
+  function setBdType(person, type) {
+    var solar = document.getElementById('bd-' + person + '-solar');
+    var lunar = document.getElementById('bd-' + person + '-lunar');
+    if (solar) solar.hidden = (type !== 'solar');
+    if (lunar) lunar.hidden = (type !== 'lunar');
+    var btns = document.querySelectorAll('.bd-type-btn[data-bd-person="' + person + '"]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].getAttribute('data-bd-type') === type);
+    }
+    bdType[person] = type;
+  }
+
   function openBirthdaySheet() {
     var couple = State.couple();
     if (!couple) { UI.toast('请先设置在一起日期'); return; }
@@ -145,27 +214,94 @@
     var taInput = document.getElementById('bd-ta');
     var myLabel = document.getElementById('bd-my-label');
     var taLabel = document.getElementById('bd-ta-label');
-    myInput.value = myBd;
-    taInput.value = taBd;
-    if (myLabel) myLabel.textContent = myBd ? '已选择 ' + myBd : '未设置';
-    if (taLabel) taLabel.textContent = taBd ? '已选择 ' + taBd : '未设置';
+    myInput.value = (myBd.indexOf('L:') === 0) ? '' : myBd;
+    taInput.value = (taBd.indexOf('L:') === 0) ? '' : taBd;
+    if (myLabel) myLabel.textContent = myBd ? '已选择 ' + bdDisplay(myBd) : '未设置';
+    if (taLabel) taLabel.textContent = taBd ? '已选择 ' + bdDisplay(taBd) : '未设置';
+    ['my', 'ta'].forEach(function (p) {
+      var v = (p === 'my') ? myBd : taBd;
+      var type = (String(v).indexOf('L:') === 0) ? 'lunar' : 'solar';
+      var md = parseLunarStored(v);
+      bdLunarSel[p] = md ? { m: md.m, d: md.d } : null;
+      var li = document.getElementById('bd-' + p + '-lunar-input');
+      if (li) li.value = md ? Utils.fmtInput(lunarAnchorDate(md)) : '';
+      setBdType(p, type);
+    });
     UI.openSheet('birthday-sheet');
   }
   function saveBirthday() {
     var couple = State.couple();
     if (!couple) return;
-    var mb = document.getElementById('bd-my').value.trim();
-    var tb = document.getElementById('bd-ta').value.trim();
+    function readOne(person) {
+      var type = bdType[person] || 'solar';
+      if (type === 'lunar') {
+        var sel = bdLunarSel[person];
+        if (!sel || !sel.m || !sel.d) return '';
+        return 'L:' + pad2(sel.m) + '-' + pad2(sel.d);
+      }
+      return document.getElementById('bd-' + person).value.trim();
+    }
+    var mb = readOne('my');
+    var tb = readOne('ta');
     var bad = [];
-    if (mb && !/^\d{2}-\d{2}$/.test(mb)) bad.push('我的生日');
-    if (tb && !/^\d{2}-\d{2}$/.test(tb)) bad.push('TA的生日');
-    if (bad.length) { UI.toast(bad.join('、') + '格式应为 月-日，如 02-14'); return; }
+    if (mb && !/^\d{2}-\d{2}$/.test(mb) && !/^L:\d{2}-\d{2}$/.test(mb)) bad.push('我的生日');
+    if (tb && !/^\d{2}-\d{2}$/.test(tb) && !/^L:\d{2}-\d{2}$/.test(tb)) bad.push('TA的生日');
+    if (bad.length) { UI.toast(bad.join('、') + '格式应为 月-日（公历）或 L:月-日（农历），如 02-14 或 L:08-10'); return; }
     couple.myBirthday = mb || '';
     couple.taBirthday = tb || '';
     State.saveCouple(couple);
+    State.syncMyBirthdayAnniv(couple);
     UI.closeSheet('birthday-sheet');
     UI.toast('双人生日已保存');
     render();
+  }
+
+  /* 首页卡片配置（数据源：home.js 导出的 global.HomeCards；未加载时兜底定义） */
+  function cardDefs() {
+    return (global.HomeCards && global.HomeCards.defs) ? global.HomeCards.defs : [
+      { key: 'hero', label: '在一起天数' },
+      { key: 'quote', label: '每日一句' },
+      { key: 'birthday', label: 'TA 的生日' },
+      { key: 'countdown', label: '纪念日倒计时' },
+      { key: 'next', label: '下一个特别日子' },
+      { key: 'quick', label: '快捷入口' },
+      { key: 'recent', label: '最近回忆' }
+    ];
+  }
+  function cardsLabel() {
+    if (!global.HomeCards) return '';
+    var cfg = global.HomeCards.get();
+    var defs = cardDefs();
+    var on = 0;
+    for (var i = 0; i < defs.length; i++) {
+      if (cfg[defs[i].key] !== false) on++;
+    }
+    return on + '/' + defs.length + ' 张';
+  }
+  function openCardsSheet() {
+    if (!global.HomeCards) { UI.toast('首页卡片配置暂不可用'); return; }
+    var cfg = global.HomeCards.get();
+    var defs = cardDefs();
+    var html = '';
+    for (var i = 0; i < defs.length; i++) {
+      var key = defs[i].key;
+      var on = cfg[key] !== false;
+      html += '<div class="cards-row">' +
+        '<span class="cards-name">' + esc(defs[i].label) + '</span>' +
+        '<button type="button" class="switch' + (on ? ' on' : '') + '" data-card-key="' + key + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"><span class="switch-knob"></span></button>' +
+        '</div>';
+    }
+    var wrap = document.getElementById('cards-list');
+    if (wrap) wrap.innerHTML = html;
+    UI.openSheet('cards-sheet');
+  }
+  function toggleCard(key, on) {
+    if (!global.HomeCards) return;
+    var cfg = global.HomeCards.get();
+    cfg[key] = on;
+    global.HomeCards.save(cfg);
+    var label = document.getElementById('profile-cards-label');
+    if (label) label.textContent = cardsLabel();
   }
 
   function exportData() {
@@ -283,6 +419,8 @@
     });
     document.getElementById('profile-share').addEventListener('click', openDayShare);
     document.getElementById('profile-date').addEventListener('click', editRelationshipDate);
+    var cardsEntry = document.getElementById('profile-cards');
+    if (cardsEntry) cardsEntry.addEventListener('click', openCardsSheet);
     document.getElementById('profile-theme').addEventListener('click', openThemeSheet);
     document.getElementById('profile-ai').addEventListener('click', openAiSheet);
     document.getElementById('profile-export').addEventListener('click', exportData);
@@ -297,8 +435,21 @@
     var bdTa = document.getElementById('bd-ta');
     if (bdMy) bdMy.addEventListener('change', function () { bdToMmdd(bdMy, document.getElementById('bd-my-label')); });
     if (bdTa) bdTa.addEventListener('change', function () { bdToMmdd(bdTa, document.getElementById('bd-ta-label')); });
+    var bdMyLunar = document.getElementById('bd-my-lunar-input');
+    var bdTaLunar = document.getElementById('bd-ta-lunar-input');
+    if (bdMyLunar) bdMyLunar.addEventListener('change', function () { onLunarPicked('my', bdMyLunar, document.getElementById('bd-my-label')); });
+    if (bdTaLunar) bdTaLunar.addEventListener('change', function () { onLunarPicked('ta', bdTaLunar, document.getElementById('bd-ta-label')); });
     var bdSave = document.getElementById('birthday-save');
     if (bdSave) bdSave.addEventListener('click', saveBirthday);
+    /* 生日弹窗公历/农历分段切换 */
+    var bdSheet = document.getElementById('birthday-sheet');
+    if (bdSheet) {
+      bdSheet.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.bd-type-btn') : null;
+        if (!btn) return;
+        setBdType(btn.getAttribute('data-bd-person'), btn.getAttribute('data-bd-type'));
+      });
+    }
 
     document.getElementById('theme-sheet').addEventListener('click', function (e) {
       var opt = e.target.closest ? e.target.closest('.theme-opt') : null;
@@ -310,6 +461,21 @@
       UI.toast('主题已切换');
       refreshLabels();
     });
+
+    /* 首页卡片配置：开关点击即切换并持久化 */
+    var cardsSheet = document.getElementById('cards-sheet');
+    if (cardsSheet) {
+      cardsSheet.addEventListener('click', function (e) {
+        var sw = e.target.closest ? e.target.closest('.switch') : null;
+        if (!sw) return;
+        var key = sw.getAttribute('data-card-key');
+        if (!key) return;
+        var on = sw.classList.contains('on');
+        toggleCard(key, !on);
+        sw.classList.toggle('on', !on);
+        sw.setAttribute('aria-checked', !on ? 'true' : 'false');
+      });
+    }
   }
 
   global.Views.profile = { render: render, applyTheme: applyTheme, refreshLabels: refreshLabels };

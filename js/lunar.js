@@ -152,12 +152,50 @@
     return r ? r.label : '';
   }
 
+  /* 农历 → 公历
+     输入农历年 y（1901~2100）、月 m（1~12）、日 d（1~30）、是否闰月 isLeap
+     返回该农历日对应的公历 Date（与 fromDate 同基准，正时区 getFullYear/Month/Date 即为公历日）；
+     · 农历年超出支持范围返回 null；
+     · 月日非法（m 不在 1~12、d 不在 1~30）返回 null；
+     · 该年不存在闰 m 月时 isLeap 请求返回 null；
+     · 该农历月实际天数不足 d（如当年腊月仅廿九但 d=30）时取该月最后一天兜底 */
+  function toSolarDate(y, m, d, isLeap) {
+    y = +y; m = +m; d = +d;
+    if (!y || !m || !d) return null;
+    if (y < FROM_YEAR || y > TO_YEAR) return null;
+    if (m < 1 || m > 12 || d < 1 || d > 30) return null;
+    var lm = leapMonthOf(y);
+    if (isLeap && lm !== m) return null;
+
+    var off = 0;
+    for (var yy = FROM_YEAR; yy < y; yy++) off += yearDaysOf(yy);
+
+    var cur = 1;
+    if (isLeap) {
+      /* 闰 m 月：先经过 1..m-1 常规月与常规 m 月，到达闰 m 月初一 */
+      while (cur < m) { off += monthDaysOf(y, cur); cur++; }
+      off += monthDaysOf(y, m);
+    } else {
+      /* 常规 m 月：经过 1..m-1 常规月；闰月紧跟在其同名月之后 */
+      while (cur < m) {
+        off += monthDaysOf(y, cur);
+        if (cur === lm) off += leapDaysOf(y);
+        cur++;
+      }
+    }
+
+    var real = isLeap ? leapDaysOf(y) : monthDaysOf(y, m);
+    if (d > real) d = real; /* 该月无此日，取月末兜底 */
+    return new Date(BASE_UTC + (off + d - 1) * DAY_MS);
+  }
+
   global.OurDays = global.OurDays || {};
   global.OurDays.Lunar = {
     range: { from: '1901-02-19', to: '2100-12-31' },
     FROM_YEAR: FROM_YEAR,
     TO_YEAR: TO_YEAR,
     fromDate: fromDate,
+    toSolarDate: toSolarDate,
     cellOf: cellOf,
     labelOf: labelOf,
     monthName: monthName,

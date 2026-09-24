@@ -22,28 +22,103 @@
 <!-- ================= 首次引导 ================= -->
 <section class="page page-center" id="page-onboarding" hidden>
   <div class="ob-wrap">
-    <!-- 欢迎 -->
-    <div class="ob-view" id="ob-welcome">
-      <div class="ob-logo">和你第N天</div>
-      <div class="ob-slogan">记录和你在一起的每一天。</div>
-      <button class="btn btn-primary btn-lg" data-action="ob-start">开始记录</button>
-      <div class="ob-privacy">无需注册 · 数据仅保存在本机</div>
+    <!-- 步骤进度 -->
+    <div class="ob-progress" id="ob-progress" hidden>
+      <div class="ob-progress-track"><div class="ob-progress-bar" id="ob-progress-bar"></div></div>
+      <div class="ob-progress-labels" aria-hidden="true"><span>日子</span><span>昵称</span><span>生日</span><span>完成</span></div>
     </div>
 
-    <!-- 选日期 -->
+    <!-- 欢迎 -->
+    <div class="ob-view ob-view-welcome" id="ob-welcome">
+      <div class="ob-deco ob-deco-a" aria-hidden="true"></div>
+      <div class="ob-deco ob-deco-b" aria-hidden="true"></div>
+      <div class="ob-logo-badge" aria-hidden="true">❤️</div>
+      <h1 class="ob-logo">和你第N天</h1>
+      <p class="ob-slogan">把在一起的日子，<br>过成值得纪念的每一天。</p>
+      <p class="ob-slogan-sub">记录开始 · 倒计时 · 纪念日 · 专属回忆</p>
+      <button class="btn btn-primary btn-lg ob-cta" data-action="ob-start">开启我们的记录 <span class="ob-cta-arrow">→</span></button>
+      <p class="ob-privacy">无需注册 · 数据仅保存在本机</p>
+    </div>
+
+    <!-- 在一起的日子 -->
     <div class="ob-view" id="ob-date" hidden>
-      <div class="ob-step">1 / 2</div>
+      <div class="ob-step-pill">STEP 1 · 我们的日子</div>
       <h2 class="ob-title">你们是哪一天开始的？</h2>
-      <div class="date-field">
+      <p class="ob-desc">选一个值得纪念的开始，<br>往后的每一天都会被好好记住。</p>
+      <div class="date-field ob-date-field">
         <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
         <input type="text" class="input input-lg date-pick" id="ob-date-input" placeholder="点击选择日期" readonly data-date-open="ob-date-input">
       </div>
       <p class="ob-error" id="ob-date-error" hidden>这一天还没到哦，换一个日期吧。</p>
-      <button class="btn btn-primary btn-lg" data-action="ob-date-next">继续</button>
+      <button class="btn btn-primary btn-lg btn-block" data-action="ob-date-next">继续</button>
       <button class="btn btn-ghost" data-action="ob-back">返回</button>
     </div>
 
-    <!-- 天数 + 昵称 -->
+    <!-- 昵称 -->
+    <div class="ob-view" id="ob-names" hidden>
+      <div class="ob-step-pill">STEP 2 · 称呼彼此</div>
+      <h2 class="ob-title">你们怎么称呼彼此？</h2>
+      <p class="ob-desc">填上昵称后，首页会以你们的名字展示。<br>也可以跳过，之后随时能在「我的」页修改。</p>
+      <div class="field-row ob-name-row">
+        <div class="field">
+          <label>我的昵称</label>
+          <input type="text" class="input" id="ob-my-name" maxlength="12" placeholder="如：小马" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next">
+        </div>
+        <div class="field">
+          <label>TA的昵称</label>
+          <input type="text" class="input" id="ob-ta-name" maxlength="12" placeholder="如：小鹿" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" data-action="ob-names-next">继续</button>
+      <button class="btn btn-ghost" data-action="ob-names-skip">先跳过</button>
+      <button class="btn btn-ghost" data-action="ob-back">返回</button>
+    </div>
+
+    <!-- 生日（公历 / 农历） -->
+    <div class="ob-view" id="ob-birthday" hidden>
+      <div class="ob-step-pill">STEP 3 · 特别的日子</div>
+      <h2 class="ob-title">两个人的生日</h2>
+      <p class="ob-desc">设置后首页会显示生日倒计时，<br>公历、农历都可以选，也可以跳过。</p>
+      <div class="ob-bd-card">
+        <div class="field">
+          <label>我的生日</label>
+          <div class="bd-type-row">
+            <button type="button" class="bd-type-btn active" data-ob-bd-type="solar" data-ob-bd-person="my">公历</button>
+            <button type="button" class="bd-type-btn" data-ob-bd-type="lunar" data-ob-bd-person="my">农历</button>
+          </div>
+          <div class="date-field" id="ob-bd-my-solar">
+            <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+            <input type="text" class="input date-pick" id="ob-bd-my" placeholder="点击选择日期" readonly data-date-open="ob-bd-my">
+          </div>
+          <div class="date-field" id="ob-bd-my-lunar" hidden>
+            <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+            <input type="text" class="input date-pick" id="ob-bd-my-lunar-input" placeholder="点击选择农历日期" readonly data-date-open="ob-bd-my-lunar-input">
+          </div>
+          <p class="bd-tip" id="ob-bd-my-label">未设置</p>
+        </div>
+        <div class="field">
+          <label>TA 的生日</label>
+          <div class="bd-type-row">
+            <button type="button" class="bd-type-btn active" data-ob-bd-type="solar" data-ob-bd-person="ta">公历</button>
+            <button type="button" class="bd-type-btn" data-ob-bd-type="lunar" data-ob-bd-person="ta">农历</button>
+          </div>
+          <div class="date-field" id="ob-bd-ta-solar">
+            <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+            <input type="text" class="input date-pick" id="ob-bd-ta" placeholder="点击选择日期" readonly data-date-open="ob-bd-ta">
+          </div>
+          <div class="date-field" id="ob-bd-ta-lunar" hidden>
+            <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+            <input type="text" class="input date-pick" id="ob-bd-ta-lunar-input" placeholder="点击选择农历日期" readonly data-date-open="ob-bd-ta-lunar-input">
+          </div>
+          <p class="bd-tip" id="ob-bd-ta-label">未设置</p>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" data-action="ob-bd-next">继续</button>
+      <button class="btn btn-ghost" data-action="ob-bd-skip">先跳过</button>
+      <button class="btn btn-ghost" data-action="ob-back">返回</button>
+    </div>
+
+    <!-- 完成 -->
     <div class="ob-view" id="ob-done" hidden>
       <div class="ob-day-hero">
         <div class="ob-heart">❤️</div>
@@ -51,21 +126,9 @@
         <div class="ob-hero-num" id="ob-days">0</div>
         <div class="ob-hero-unit">天</div>
       </div>
-      <div class="ob-nickname-block">
-        <p class="ob-nickname-tip">要不要给TA一个昵称？</p>
-        <div class="field-row">
-          <div class="field">
-            <label>我的昵称</label>
-            <input type="text" class="input" id="ob-my-name" maxlength="12" placeholder="如：小马" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next">
-          </div>
-          <div class="field">
-            <label>TA的昵称</label>
-            <input type="text" class="input" id="ob-ta-name" maxlength="12" placeholder="如：小鹿" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
-          </div>
-        </div>
-      </div>
-      <button class="btn btn-primary btn-lg" data-action="ob-enter">进入我们的故事</button>
-      <button class="btn btn-ghost" data-action="ob-skip">先跳过，看看天数</button>
+      <p class="ob-done-sub">第 N 天只是开始，<br>往后还有更多值得纪念的日子。</p>
+      <button class="btn btn-primary btn-lg btn-block" data-action="ob-enter">进入我们的故事</button>
+      <button class="btn btn-ghost" data-action="ob-back">返回</button>
     </div>
   </div>
 </section>
@@ -77,7 +140,7 @@
     <button class="icon-btn" id="home-settings" aria-label="设置">⚙️</button>
   </header>
 
-  <div class="home-hero">
+  <div class="home-hero" id="home-hero">
     <div class="hero-names" id="home-names" hidden></div>
     <div class="hero-sub">我们已经在一起</div>
     <div class="hero-num" id="home-days">0</div>
@@ -85,23 +148,24 @@
     <div class="hero-range" id="home-range"></div>
     <div class="hero-duration" id="home-duration" hidden></div>
     <div class="hero-tip" id="home-today-tip"></div>
-    <div class="hero-birthday" id="home-birthday" hidden></div>
   </div>
 
   <div class="quote-card" id="home-quote"></div>
+
+  <div class="countdown-widget birthday-card" id="home-birthday-card" hidden></div>
 
   <div class="countdown-widget" id="home-countdown" hidden></div>
 
   <div class="next-card" id="home-next"></div>
 
-  <div class="quick-grid">
+  <div class="quick-grid" id="home-quick">
     <button class="quick-item" data-nav="memory/new"><span class="quick-icon">📸</span><span>记录回忆</span></button>
     <button class="quick-item" data-nav="anniv"><span class="quick-icon">💕</span><span>添加纪念日</span></button>
     <button class="quick-item" data-open-ai="memory"><span class="quick-icon">✨</span><span>AI写回忆</span></button>
     <button class="quick-item" data-open-ai="surprise"><span class="quick-icon">🎁</span><span>想个惊喜</span></button>
   </div>
 
-  <div class="section-block">
+  <div class="section-block" id="home-recent-block">
     <div class="section-title-row">
       <h3>最近回忆</h3>
       <button class="text-link" data-nav="story">查看全部</button>
@@ -288,19 +352,6 @@
       </div>
     </div>
     <div class="field">
-      <label>封面图 <span class="optional">选填</span></label>
-      <div class="cover-uploader" id="anniv-cover">
-        <div class="cover-empty" id="anniv-cover-empty">
-          <div class="cover-ico">🖼️</div>
-          <div class="cover-txt">选择一张封面图</div>
-          <div class="cover-sub">不填则使用默认图标</div>
-        </div>
-        <img id="anniv-cover-preview" class="cover-preview" alt="封面预览" hidden>
-        <button type="button" class="cover-remove" id="anniv-cover-remove" hidden aria-label="移除封面">✕</button>
-        <input type="file" id="anniv-cover-file" accept="image/*" hidden>
-      </div>
-    </div>
-    <div class="field">
       <label>备注</label>
       <input type="text" class="input" id="anniv-note" maxlength="60" placeholder="选填">
     </div>
@@ -333,6 +384,7 @@
     <button class="setting-item" id="profile-edit">编辑情侣资料</button>
     <button class="setting-item" id="profile-birthday">情侣生日<span class="setting-value" id="profile-birthday-label">未设置</span></button>
     <button class="setting-item" id="profile-date">在一起日期<span class="setting-value" id="profile-date-label"></span></button>
+    <button class="setting-item" id="profile-cards">首页卡片<span class="setting-value" id="profile-cards-label"></span></button>
     <button class="setting-item" id="profile-theme">更换主题<span class="setting-value" id="theme-label"></span></button>
     <button class="setting-item" id="profile-ai">AI 设置<span class="setting-value" id="ai-status"></span></button>
     <button class="setting-item" id="profile-export">导出数据</button>
@@ -358,21 +410,49 @@
     <p class="sheet-desc">设置两个人的生日后，首页会显示距离 TA 生日的倒计时。</p>
     <div class="field">
       <label>我的生日</label>
-      <div class="date-field">
+      <div class="bd-type-row">
+        <button type="button" class="bd-type-btn active" data-bd-type="solar" data-bd-person="my">公历</button>
+        <button type="button" class="bd-type-btn" data-bd-type="lunar" data-bd-person="my">农历</button>
+      </div>
+      <div class="date-field" id="bd-my-solar">
         <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
         <input type="text" class="input date-pick" id="bd-my" placeholder="点击选择日期" readonly data-date-open="bd-my">
-        <p class="bd-tip" id="bd-my-label">未设置</p>
       </div>
+      <div class="date-field" id="bd-my-lunar" hidden>
+        <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+        <input type="text" class="input date-pick" id="bd-my-lunar-input" placeholder="点击选择农历日期" readonly data-date-open="bd-my-lunar-input">
+      </div>
+      <p class="bd-tip" id="bd-my-label">未设置</p>
     </div>
     <div class="field">
       <label>TA 的生日</label>
-      <div class="date-field">
+      <div class="bd-type-row">
+        <button type="button" class="bd-type-btn active" data-bd-type="solar" data-bd-person="ta">公历</button>
+        <button type="button" class="bd-type-btn" data-bd-type="lunar" data-bd-person="ta">农历</button>
+      </div>
+      <div class="date-field" id="bd-ta-solar">
         <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
         <input type="text" class="input date-pick" id="bd-ta" placeholder="点击选择日期" readonly data-date-open="bd-ta">
-        <p class="bd-tip" id="bd-ta-label">未设置</p>
       </div>
+      <div class="date-field" id="bd-ta-lunar" hidden>
+        <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>
+        <input type="text" class="input date-pick" id="bd-ta-lunar-input" placeholder="点击选择农历日期" readonly data-date-open="bd-ta-lunar-input">
+      </div>
+      <p class="bd-tip" id="bd-ta-label">未设置</p>
     </div>
     <button class="btn btn-primary btn-lg btn-block" id="birthday-save">保存</button>
+  </div>
+</div>
+
+<!-- 首页卡片配置弹窗 -->
+<div class="sheet" id="cards-sheet" hidden>
+  <div class="sheet-head">
+    <div class="sheet-title">首页卡片</div>
+    <button class="icon-btn sheet-close" data-close-sheet aria-label="关闭">✕</button>
+  </div>
+  <div class="sheet-body">
+    <p class="sheet-desc">选择要在首页展示的卡片，关闭开关后立即生效。</p>
+    <div id="cards-list"></div>
   </div>
 </div>
 

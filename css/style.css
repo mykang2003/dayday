@@ -1210,24 +1210,30 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: var(--quote-bg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary-soft) 62%, var(--card)), var(--card));
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: var(--sp-3) var(--sp-4);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--primary) 7%, transparent);
 }
 .period-predict .pp-label { font-size: 13px; color: var(--pd-pink-deep); font-weight: 600; margin-bottom: var(--sp-1); }
-.period-predict .pp-title { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.3; }
-.period-predict .pp-days { font-size: 15px; color: var(--pd-pink-deep); margin-top: var(--sp-1); }
+.period-predict .pp-title { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.45; white-space: nowrap; }
+.period-predict .pp-days { font-size: 26px; font-weight: 800; color: var(--pd-pink-deep); line-height: 1.2; margin-top: var(--sp-1); letter-spacing: .5px; }
 .period-predict .pp-ovu { font-size: 14px; color: var(--pd-ovu); font-weight: 700; margin-top: var(--sp-2); display: flex; align-items: center; gap: var(--sp-1); }
 .period-predict .pp-ovu::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pd-ovu); display: inline-block; flex: none; }
 .period-predict .pp-sub { font-size: 13px; color: var(--sub); margin-top: var(--sp-2); }
-.period-predict .pp-meta { font-size: 12px; color: var(--sub); margin-top: var(--sp-1); opacity: .85; }
+.period-predict .pp-meta { font-size: 13px; color: var(--sub); margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--line); opacity: .85; }
 .period-predict .pp-desc { font-size: 14px; color: var(--sub); margin: var(--sp-2) 0 var(--sp-3); line-height: 1.6; }
 .period-predict .btn { width: 100%; }
-.period-predict .pp-cols { display: flex; gap: var(--sp-3); margin-top: var(--sp-2); }
-.period-predict .pp-col { flex: 1; background: color-mix(in srgb, var(--card) 62%, transparent); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); box-sizing: border-box; }
-.period-predict .pp-k { font-size: 11px; color: var(--sub); }
-.period-predict .pp-v { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.period-predict .pp-cols { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-2); }
+.period-predict .pp-col { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); background: color-mix(in srgb, var(--card) 62%, transparent); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); box-sizing: border-box; }
+.period-predict .pp-item { display: inline-flex; align-items: baseline; gap: var(--sp-1); min-width: 0; }
+.period-predict .pp-item + .pp-item { padding-left: var(--sp-3); border-left: 1px solid var(--line); }
+.period-predict .pp-k { font-size: 11px; color: var(--sub); white-space: nowrap; }
+.period-predict .pp-v { font-size: 14px; font-weight: 700; color: var(--text); white-space: normal; overflow-wrap: break-word; }
+.period-predict .pp-col-ovu { flex: 1 1 100%; }
+.period-predict .pp-col-ovu .pp-item { white-space: nowrap; }
+.period-predict .pp-col-ovu .pp-v { white-space: nowrap; }
 .period-predict.pp-empty { align-items: center; text-align: center; }
 .pp-empty-ico { font-size: 44px; line-height: 1; margin-bottom: var(--sp-3); }
 .period-predict.pp-empty .pp-label { margin-bottom: var(--sp-1); }
@@ -1263,8 +1269,9 @@ input, textarea, select {
 .pd-cell.dp-today .dp-d { box-shadow: inset 0 -2px 0 var(--pd-pink); }
 .pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-pred.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
 
-.period-legend { display: flex; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
-.period-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.period-legend { display: flex; justify-content: center; gap: 0; margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
+.period-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); }
+.period-legend span + span { border-left: 1px solid var(--line); }
 .pd-lg-dot { position: relative; width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
 .pd-lg-dot.on { background: var(--pd-pink); }
 .pd-lg-dot.on::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--on-primary); }
@@ -1290,13 +1297,15 @@ input, textarea, select {
   .period-card { margin-left: var(--sp-3); margin-right: var(--sp-3); }
   .period-confirm { flex-wrap: wrap; row-gap: var(--sp-2); }
   .period-confirm .pc-actions { margin-left: auto; }
-  .period-predict .pp-title { font-size: 24px; }
-  .period-legend { gap: var(--sp-3); }
+  .period-predict .pp-title { font-size: 16px; }
   .period-predict .pp-cols { gap: var(--sp-2); }
   .pd-cell { font-size: 13px; }
 }
 @media (max-width: 360px) {
   #page-period { --ctl-sm: 32px; }
+  .period-predict .pp-title { font-size: 15px; }
+  .period-predict .pp-days { font-size: 22px; }
+  .period-predict .pp-col-ovu .pp-v { font-size: 12px; }
   .pd-cell .pd-dot { margin-top: 2px; }
   .period-predict { padding: var(--sp-3); }
   .period-predict .pp-ovu { font-size: 13px; }

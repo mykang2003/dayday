@@ -302,16 +302,15 @@
         '<div class="pp-days">' + diffTxt + '</div>' +
         '<div class="pp-cols">' +
           '<div class="pp-col">' +
-            '<div class="pp-k">预计持续 · 周期</div>' +
-            '<div class="pp-v">' + p.periodLen + ' 天 · ' + p.cycleLen + ' 天' + (p.learned ? ' · 已修正' : '') + '</div>' +
+            '<span class="pp-item"><span class="pp-k">预计持续</span><span class="pp-v">' + p.periodLen + '天</span></span>' +
+            '<span class="pp-item"><span class="pp-k">周期</span><span class="pp-v">' + p.cycleLen + '天</span></span>' +
           '</div>' +
           (ovuTxt ?
-          '<div class="pp-col">' +
-            '<div class="pp-k">预计排卵日</div>' +
-            '<div class="pp-v">' + esc(ovuTxt) + '</div>' +
+          '<div class="pp-col pp-col-ovu">' +
+            '<span class="pp-item"><span class="pp-k">预计排卵日</span><span class="pp-v">' + esc(ovuTxt) + '</span></span>' +
           '</div>' : '') +
         '</div>' +
-        '<div class="pp-meta">最近一次开始：' + esc(p.lastStartISO) + '</div>' +
+        '<div class="pp-meta">最近一次开始：' + esc(p.lastStartISO) + (p.learned ? ' · 已修正' : '') + '</div>' +
       '</div>';
     box.innerHTML = html;
   }

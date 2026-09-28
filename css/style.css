@@ -1176,3 +1176,130 @@ input, textarea, select {
 .switch.on { background: var(--primary); }
 .switch-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
 .switch.on .switch-knob { left: 23px; }
+
+/* ============================================================
+   生理期 Tab（period）
+   月历三态标记 · 预测信息卡 · 引导弹层
+   样式全部复用既有设计令牌（--sp-* / --r-* / --ctl-* / --primary*），
+   视觉对齐 datepicker 日历与纪念日 hero 卡片。
+   ============================================================ */
+/* 生理期页局部变量（仅作用于 #page-period，不污染全局主题） */
+#page-period {
+  display: flex;
+  flex-direction: column;
+  --ctl-sm: 34px;
+  /* 生理期专用色：全部映射全局主题令牌，随 data-theme 切换自动联动。
+     默认主题下为柔和玫瑰粉（--primary #FF6B8A），比旧玫红更低饱和不刺眼；
+     排卵日改用深主色实心标记提高辨识度；"未记录"弱化为灰阶随主题变化 */
+  --pd-pink: var(--primary);
+  --pd-pink-deep: var(--primary-deep);
+  --pd-pink-soft: color-mix(in srgb, var(--primary) 20%, var(--card));
+  --pd-pink-bg: color-mix(in srgb, var(--primary) 7%, var(--card));
+  --pd-ovu: var(--primary-deep);
+  --pd-ovu-soft: var(--soft);
+  --pd-off: var(--sub);
+  --pd-off-soft: var(--line);
+}
+.period-card { flex: 1 1 auto; display: flex; flex-direction: column; margin-bottom: var(--sp-4); }
+.period-card { padding: var(--sp-2) var(--sp-3) var(--sp-3) !important; }
+.period-card .dp-foot { margin-top: var(--sp-1); }
+.period-card .period-legend { margin-top: var(--sp-2); }
+.period-predict-wrap { flex: 1 1 auto; display: flex; flex-direction: column; margin-top: var(--sp-2); }
+.period-predict {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--quote-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+}
+.period-predict .pp-label { font-size: 13px; color: var(--pd-pink-deep); font-weight: 600; margin-bottom: var(--sp-1); }
+.period-predict .pp-title { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.3; }
+.period-predict .pp-days { font-size: 15px; color: var(--pd-pink-deep); margin-top: var(--sp-1); }
+.period-predict .pp-ovu { font-size: 14px; color: var(--pd-ovu); font-weight: 700; margin-top: var(--sp-2); display: flex; align-items: center; gap: var(--sp-1); }
+.period-predict .pp-ovu::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pd-ovu); display: inline-block; flex: none; }
+.period-predict .pp-sub { font-size: 13px; color: var(--sub); margin-top: var(--sp-2); }
+.period-predict .pp-meta { font-size: 12px; color: var(--sub); margin-top: var(--sp-1); opacity: .85; }
+.period-predict .pp-desc { font-size: 14px; color: var(--sub); margin: var(--sp-2) 0 var(--sp-3); line-height: 1.6; }
+.period-predict .btn { width: 100%; }
+.period-predict .pp-cols { display: flex; gap: var(--sp-3); margin-top: var(--sp-2); }
+.period-predict .pp-col { flex: 1; background: color-mix(in srgb, var(--card) 62%, transparent); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); box-sizing: border-box; }
+.period-predict .pp-k { font-size: 11px; color: var(--sub); }
+.period-predict .pp-v { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.period-predict.pp-empty { align-items: center; text-align: center; }
+.pp-empty-ico { font-size: 44px; line-height: 1; margin-bottom: var(--sp-3); }
+.period-predict.pp-empty .pp-label { margin-bottom: var(--sp-1); }
+.period-predict.pp-empty .pp-desc { margin-bottom: var(--sp-4); }
+.period-predict.pp-empty .btn { width: auto; min-width: 180px; }
+.period-card .period-confirm { flex: none; }
+
+.period-card {
+  margin: 0 var(--sp-4) var(--sp-5);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-3) var(--sp-4);
+}
+.period-card .dp-head { padding: var(--sp-1) var(--sp-1) var(--sp-2); }
+.pd-week { padding: var(--sp-1) var(--sp-1) var(--sp-2); }
+.pd-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: var(--ctl-sm); border-radius: 50%; border: none; background: transparent; font-size: 14px; color: var(--text); padding: 0; }
+.pd-cell .dp-d { line-height: 1; }
+.pd-cell .pd-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; background: transparent; display: block; box-sizing: border-box; }
+.pd-cell:active { background: var(--soft); }
+.pd-cell.pd-on { background: var(--pd-pink); color: var(--on-primary); font-weight: 700; }
+.pd-cell.pd-on .pd-dot { background: var(--on-primary); }
+.pd-cell.pd-off { background: var(--pd-off-soft); color: var(--pd-off); font-weight: 600; }
+.pd-cell.pd-off .pd-dot { background: var(--pd-off); }
+.pd-cell.pd-pred { background: var(--pd-pink-soft); }
+.pd-cell.pd-pred .dp-d { color: var(--pd-pink-deep); }
+.pd-cell.pd-pred .pd-dot { background: transparent; border: 2px solid var(--pd-pink-deep); }
+.pd-cell.pd-ovu { background: var(--pd-ovu-soft); }
+.pd-cell.pd-ovu .dp-d { color: var(--pd-ovu); font-weight: 700; }
+.pd-cell.pd-ovu .pd-dot { background: var(--pd-ovu); border-radius: 2px; transform: rotate(45deg); width: 6px; height: 6px; }
+.pd-cell.dp-today { font-weight: 700; }
+.pd-cell.dp-today::after { display: none; }
+.pd-cell.dp-today .dp-d { box-shadow: inset 0 -2px 0 var(--pd-pink); }
+.pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-pred.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
+
+.period-legend { display: flex; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
+.period-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.pd-lg-dot { position: relative; width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
+.pd-lg-dot.on { background: var(--pd-pink); }
+.pd-lg-dot.on::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--on-primary); }
+.pd-lg-dot.pred { background: var(--pd-pink-soft); border: 2px solid var(--pd-pink-deep); }
+.pd-lg-dot.pred::after { content: none; }
+.pd-lg-dot.ovu { background: transparent; }
+.pd-lg-dot.ovu::after { content: '\2665'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 15px; line-height: 1; color: var(--pd-ovu); font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif; }
+.period-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--pd-pink-bg); border: 1px solid var(--pd-pink-soft); border-radius: var(--r-lg); }
+.period-confirm.pc-hide { visibility: hidden; }
+.pc-text { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: 14px; font-weight: 700; color: var(--text); }
+.pc-text svg { width: 16px; height: 16px; fill: var(--pd-pink); flex: none; }
+.pc-actions { display: inline-flex; gap: var(--sp-2); }
+.pc-btn { min-width: 52px; min-height: 36px; padding: var(--sp-1) var(--sp-4); border: none; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.pc-btn.pc-yes { background: var(--pd-pink); color: var(--on-primary); }
+.pc-btn.pc-no { background: var(--soft); color: var(--sub); }
+.period-tip { text-align: center; font-size: 12px; color: var(--sub); margin-top: var(--sp-3); }
+
+/* ---------- 生理期页移动端窄屏适配 ---------- */
+/* 典型手机视口 320-430px：收紧卡片外距与字号、确认条允许换行防挤压、
+   日历格子在极窄屏降档，全部沿用 --sp-* / --ctl-* 令牌与主题变量，
+   不改变三态图标形态（实心圆/圆环/菱形/爱心）与主题联动 */
+@media (max-width: 375px) {
+  .period-card { margin-left: var(--sp-3); margin-right: var(--sp-3); }
+  .period-confirm { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .period-confirm .pc-actions { margin-left: auto; }
+  .period-predict .pp-title { font-size: 24px; }
+  .period-legend { gap: var(--sp-3); }
+  .period-predict .pp-cols { gap: var(--sp-2); }
+  .pd-cell { font-size: 13px; }
+}
+@media (max-width: 360px) {
+  #page-period { --ctl-sm: 32px; }
+  .pd-cell .pd-dot { margin-top: 2px; }
+  .period-predict { padding: var(--sp-3); }
+  .period-predict .pp-ovu { font-size: 13px; }
+  .pc-text { font-size: 13px; }
+  .pc-btn { min-width: 48px; min-height: 36px; padding: var(--sp-1) var(--sp-3); display: inline-flex; align-items: center; justify-content: center; }
+}

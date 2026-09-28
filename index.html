@@ -387,6 +387,7 @@
     <button class="setting-item" id="profile-cards">首页卡片<span class="setting-value" id="profile-cards-label"></span></button>
     <button class="setting-item" id="profile-theme">更换主题<span class="setting-value" id="theme-label"></span></button>
     <button class="setting-item" id="profile-ai">AI 设置<span class="setting-value" id="ai-status"></span></button>
+    <button class="setting-item" id="profile-period">生理期设置<span class="setting-value" id="profile-period-label">未设置</span></button>
     <button class="setting-item" id="profile-export">导出数据</button>
     <button class="setting-item" id="profile-sample">载入示例回忆</button>
     <button class="setting-item danger" id="profile-reset">清空全部数据</button>
@@ -399,6 +400,72 @@
     <div class="about-ver">v1.0.0 · MVP</div>
   </div>
 </section>
+
+<!-- ================= 生理期 ================= -->
+<section class="page" id="page-period" hidden>
+  <header class="topbar">
+    <div class="page-title">生理期</div>
+  </header>
+
+  <div class="period-card">
+    <div class="dp-head">
+      <button type="button" class="icon-btn dp-nav" data-pd-nav="-1" aria-label="上一月">‹</button>
+      <div class="dp-title" id="pd-title"></div>
+      <button type="button" class="icon-btn dp-nav" data-pd-nav="1" aria-label="下一月">›</button>
+    </div>
+    <div class="dp-week pd-week">
+      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+    </div>
+    <div class="dp-grid" id="pd-grid"></div>
+    <div class="dp-foot" id="pd-foot">
+      <button type="button" class="btn btn-ghost btn-sm" data-pd-today>回到今天</button>
+    </div>
+    <div class="period-legend">
+      <span><i class="pd-lg-dot on"></i>月经期</span>
+      <span><i class="pd-lg-dot pred"></i>预测期</span>
+      <span><i class="pd-lg-dot ovu"></i>排卵日</span>
+    </div>
+    <div class="period-confirm" id="period-confirm">
+      <div class="pc-text">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C7.5 7.2 4.5 11.2 4.5 15a7.5 7.5 0 0 0 15 0c0-3.8-3-7.8-7.5-13z"/></svg>
+        月经来了？
+      </div>
+      <div class="pc-actions">
+        <button type="button" class="pc-btn pc-yes" data-pd-confirm="yes">是</button>
+        <button type="button" class="pc-btn pc-no" data-pd-confirm="no">否</button>
+      </div>
+    </div>
+    <div class="period-predict-wrap" id="period-predict"></div>
+  </div>
+</section>
+
+<!-- 生理期引导弹窗 -->
+<div class="sheet" id="period-sheet" hidden>
+  <div class="sheet-head">
+    <div class="sheet-title">记录生理期</div>
+    <button class="icon-btn sheet-close" data-close-sheet aria-label="关闭">✕</button>
+  </div>
+  <div class="sheet-body">
+    <p class="sheet-desc">记录最近一次开始日期、持续天数与周期，我们会自动预测下一次。</p>
+    <div class="field">
+      <label>最近一次开始日期</label>
+      <div class="date-field">
+        <svg class="df-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+        <input type="text" class="input date-pick" id="period-last-start" placeholder="点击选择日期" readonly data-date-open="period-last-start">
+      </div>
+    </div>
+    <div class="field">
+      <label>一般持续几天</label>
+      <div class="mood-row" id="period-len-row"></div>
+    </div>
+    <div class="field">
+      <label>周期多少天</label>
+      <div class="mood-row" id="period-cycle-row"></div>
+    </div>
+    <button class="btn btn-primary btn-lg btn-block" id="period-save">保存</button>
+    <button class="btn btn-ghost btn-block" id="period-reset">清空数据，重新设置</button>
+  </div>
+</div>
 
 <!-- 情侣生日弹窗 -->
 <div class="sheet" id="birthday-sheet" hidden>
@@ -524,6 +591,7 @@
   <button class="nav-item" data-nav="home"><span class="nav-ico">🏠</span><span class="nav-label">首页</span></button>
   <button class="nav-item" data-nav="story"><span class="nav-ico">📖</span><span class="nav-label">我们</span></button>
   <button class="nav-item" data-nav="anniv"><span class="nav-ico">💕</span><span class="nav-label">纪念日</span></button>
+  <button class="nav-item" data-nav="period"><span class="nav-ico">🌸</span><span class="nav-label">生理期</span></button>
   <button class="nav-item" data-nav="profile"><span class="nav-ico">👤</span><span class="nav-label">我的</span></button>
 </nav>
 
@@ -583,6 +651,7 @@
 <script src="js/memory.js"></script>
 <script src="js/anniversary.js"></script>
 <script src="js/profile.js"></script>
+<script src="js/period.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

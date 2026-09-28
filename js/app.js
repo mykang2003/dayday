@@ -16,6 +16,7 @@
   renderers.album = Views.album && Views.album.render;
   renderers.anniv = Views.anniv && Views.anniv.render;
   renderers.profile = Views.profile && Views.profile.render;
+  renderers.period = Views.period && Views.period.render;
   renderers.onboarding = Views.onboarding && Views.onboarding.render;
   renderers['memory-new'] = Views['memory-new'] && Views['memory-new'].render;
   renderers['memory-detail'] = Views['memory-detail'] && Views['memory-detail'].render;
@@ -44,6 +45,7 @@
     else if (path === '/album') page = 'album';
     else if (path === '/anniv') page = 'anniv';
     else if (path === '/profile') page = 'profile';
+    else if (path === '/period') page = 'period';
     else if (path === '/onboarding') page = 'onboarding';
     else if (path === '/share') page = 'share';
     else if (path === '/' || path === '/home') page = 'home';
@@ -66,7 +68,7 @@
     var nav = t.closest ? t.closest('[data-nav]') : null;
     if (nav) {
       var val = nav.getAttribute('data-nav');
-      if (val === 'anniv' || val === 'profile' || val === 'home' || val === 'story') {
+      if (val === 'anniv' || val === 'profile' || val === 'period' || val === 'home' || val === 'story') {
         e.preventDefault();
         go('/' + val);
         return;
@@ -100,7 +102,7 @@
       // 刷新后停留在上次所在主导航页（localStorage 由 ui.showPage 记录）
       var last = '';
       try { last = localStorage.getItem('od.lastPage') || ''; } catch (e) { last = ''; }
-      go((last === 'home' || last === 'story' || last === 'anniv' || last === 'profile') ? ('/' + last) : '/home');
+      go((last === 'home' || last === 'story' || last === 'anniv' || last === 'profile' || last === 'period') ? ('/' + last) : '/home');
     } else go('/onboarding');
 
     // 进入页面提醒（E）：等当前页渲染完成后再检查，避免弹层与首屏渲染竞争

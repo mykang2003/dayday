@@ -369,6 +369,7 @@
       LS.remove('memories');
       LS.remove('customAnniv');
       LS.remove('settings');
+      LS.remove('period');
       LS.remove('photos.fallback');
       return PhotoStore.clear();
     }

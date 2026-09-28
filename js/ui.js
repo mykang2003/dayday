@@ -120,7 +120,7 @@
   }
 
   /* ---------- 页面切换 ---------- */
-  var NAV_PAGES = ['home', 'story', 'anniv', 'profile'];
+  var NAV_PAGES = ['home', 'story', 'anniv', 'period', 'profile'];
   var currentPage = '';
   function showPage(pageId, opts) {
     opts = opts || {};

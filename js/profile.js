@@ -51,6 +51,11 @@
     }
     var cl = document.getElementById('profile-cards-label');
     if (cl) cl.textContent = cardsLabel();
+    var pdLabel = document.getElementById('profile-period-label');
+    if (pdLabel) {
+      var pd = OD.LS.get('period', null);
+      pdLabel.textContent = (pd && pd.onboarded) ? '已设置' : '未设置';
+    }
   }
 
   function render() {
@@ -423,6 +428,14 @@
     if (cardsEntry) cardsEntry.addEventListener('click', openCardsSheet);
     document.getElementById('profile-theme').addEventListener('click', openThemeSheet);
     document.getElementById('profile-ai').addEventListener('click', openAiSheet);
+    var periodEntry = document.getElementById('profile-period');
+    if (periodEntry) periodEntry.addEventListener('click', function () {
+      if (global.Views.period && global.Views.period.openSetup) {
+        global.Views.period.openSetup();
+      } else {
+        global.Nav.go('/period');
+      }
+    });
     document.getElementById('profile-export').addEventListener('click', exportData);
     document.getElementById('profile-sample').addEventListener('click', loadSample);
     document.getElementById('profile-reset').addEventListener('click', clearAll);

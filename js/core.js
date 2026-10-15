@@ -350,7 +350,6 @@
             id: uid('anniv'),
             title: '我的生日',
             date: fmtInput(d),
-            note: '自动同步自我的生日',
             auto: 'myBirthday',
             createdAt: fmtInput(today())
           });

@@ -1188,15 +1188,16 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   --ctl-sm: 34px;
-  /* 生理期专用色：全部映射全局主题令牌，随 data-theme 切换自动联动。
+  /* 生理期专用色：主色系全部映射全局主题令牌，随 data-theme 切换自动联动。
      默认主题下为柔和玫瑰粉（--primary #FF6B8A），比旧玫红更低饱和不刺眼；
-     排卵日改用深主色实心标记提高辨识度；"未记录"弱化为灰阶随主题变化 */
+     排卵日使用专属紫色（圆环+内点标记），与经期/预测期明显区分，深浅底随卡片色联动；
+     "未记录"弱化为灰阶随主题变化 */
   --pd-pink: var(--primary);
   --pd-pink-deep: var(--primary-deep);
   --pd-pink-soft: color-mix(in srgb, var(--primary) 20%, var(--card));
   --pd-pink-bg: color-mix(in srgb, var(--primary) 7%, var(--card));
-  --pd-ovu: var(--primary-deep);
-  --pd-ovu-soft: var(--soft);
+  --pd-ovu: #9B5DE5;
+  --pd-ovu-soft: color-mix(in srgb, #9B5DE5 14%, var(--card));
   --pd-off: var(--sub);
   --pd-off-soft: var(--line);
 }
@@ -1254,31 +1255,37 @@ input, textarea, select {
 .pd-cell .dp-d { line-height: 1; }
 .pd-cell .pd-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; background: transparent; display: block; box-sizing: border-box; }
 .pd-cell:active { background: var(--soft); }
-.pd-cell.pd-on { background: var(--pd-pink); color: var(--on-primary); font-weight: 700; }
-.pd-cell.pd-on .pd-dot { background: var(--on-primary); }
+.pd-cell.pd-on { background: var(--pd-pink-bg); color: var(--pd-pink-deep); font-weight: 700; }
+.pd-cell.pd-on .pd-dot { width: 8px; height: 8px; background: var(--pd-pink-deep); }
 .pd-cell.pd-off { background: var(--pd-off-soft); color: var(--pd-off); font-weight: 600; }
 .pd-cell.pd-off .pd-dot { background: var(--pd-off); }
-.pd-cell.pd-pred { background: var(--pd-pink-soft); }
-.pd-cell.pd-pred .dp-d { color: var(--pd-pink-deep); }
-.pd-cell.pd-pred .pd-dot { background: transparent; border: 2px solid var(--pd-pink-deep); }
+.pd-cell.pd-pred { background: transparent; }
+.pd-cell.pd-pred .dp-d { color: var(--pd-pink); }
+.pd-cell.pd-pred .pd-dot { width: 8px; height: 8px; background: color-mix(in srgb, var(--pd-pink) 38%, transparent); border: none; }
+.pd-cell.pd-last { background: transparent; }
+.pd-cell.pd-last .dp-d { color: var(--pd-pink-deep); }
+.pd-cell.pd-last .pd-dot { width: 8px; height: 8px; background: color-mix(in srgb, var(--pd-pink) 55%, var(--card)); border: none; }
 .pd-cell.pd-ovu { background: var(--pd-ovu-soft); }
 .pd-cell.pd-ovu .dp-d { color: var(--pd-ovu); font-weight: 700; }
-.pd-cell.pd-ovu .pd-dot { background: var(--pd-ovu); border-radius: 2px; transform: rotate(45deg); width: 6px; height: 6px; }
+.pd-cell.pd-ovu .pd-dot { width: 9px; height: 9px; border: 2px solid var(--pd-ovu); background: transparent; position: relative; }
+.pd-cell.pd-ovu .pd-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: var(--pd-ovu); }
 .pd-cell.dp-today { font-weight: 700; }
 .pd-cell.dp-today::after { display: none; }
 .pd-cell.dp-today .dp-d { box-shadow: inset 0 -2px 0 var(--pd-pink); }
-.pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-pred.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
+.pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-pred.dp-today .dp-d, .pd-cell.pd-last.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
 
-.period-legend { display: flex; justify-content: center; gap: 0; margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
+.period-legend { display: flex; justify-content: center; flex-wrap: wrap; row-gap: var(--sp-1); margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
 .period-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); }
 .period-legend span + span { border-left: 1px solid var(--line); }
 .pd-lg-dot { position: relative; width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
-.pd-lg-dot.on { background: var(--pd-pink); }
-.pd-lg-dot.on::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--on-primary); }
-.pd-lg-dot.pred { background: var(--pd-pink-soft); border: 2px solid var(--pd-pink-deep); }
+.pd-lg-dot.on { background: var(--pd-pink-deep); }
+.pd-lg-dot.on::after { content: none; }
+.pd-lg-dot.last { background: color-mix(in srgb, var(--pd-pink) 55%, var(--card)); border: none; }
+.pd-lg-dot.last::after { content: none; }
+.pd-lg-dot.pred { background: color-mix(in srgb, var(--pd-pink) 38%, transparent); border: none; }
 .pd-lg-dot.pred::after { content: none; }
-.pd-lg-dot.ovu { background: transparent; }
-.pd-lg-dot.ovu::after { content: '\2665'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 15px; line-height: 1; color: var(--pd-ovu); font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif; }
+.pd-lg-dot.ovu { background: transparent; border: 2px solid var(--pd-ovu); }
+.pd-lg-dot.ovu::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--pd-ovu); }
 .period-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--pd-pink-bg); border: 1px solid var(--pd-pink-soft); border-radius: var(--r-lg); }
 .period-confirm.pc-hide { visibility: hidden; }
 .pc-text { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: 14px; font-weight: 700; color: var(--text); }
@@ -1292,8 +1299,8 @@ input, textarea, select {
 /* ---------- 生理期页移动端窄屏适配 ---------- */
 /* 典型手机视口 320-430px：收紧卡片外距与字号、确认条允许换行防挤压、
    日历格子在极窄屏降档，全部沿用 --sp-* / --ctl-* 令牌与主题变量，
-   不改变三态图标形态（实心圆/圆环/菱形/爱心）与主题联动 */
-@media (max-width: 375px) {
+   不改变三态图标形态（经期实心圆/预测半透明圆/排卵圆环+内点）与主题联动 */
+@media (max-width: 400px) {
   .period-card { margin-left: var(--sp-3); margin-right: var(--sp-3); }
   .period-confirm { flex-wrap: wrap; row-gap: var(--sp-2); }
   .period-confirm .pc-actions { margin-left: auto; }

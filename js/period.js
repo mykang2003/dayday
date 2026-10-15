@@ -9,12 +9,14 @@
        lastStart: 'YYYY-MM-DD',       // 最近一次经期开始日
        cycleLen: 28,                  // 周期天数（引导初始值，随记录自动修正）
        periodLen: 5,                  // 持续天数（引导初始值）
-       marks: { 'YYYY-MM-DD': 1 | 0 } // 每日标记：1=经期来，0=经期没来
+       marks: { 'YYYY-MM-DD': 1 | 0 },// 每日标记：1=经期来，0=经期没来
+       postponedStart: 'YYYY-MM-DD'   // 「没来」顺延后的预计开始日（可选，不影响历史）
      }
    预测规则：
      · 从 marks 提取「经期开始日」序列（当天=经期来 且 前一天≠经期来）；
      · 最近两次开始日间隔 → 学习周期，修正 cycleLen（10~90 天区间内生效）；
-     · 下次预计开始日 = lastStart 起按 cycleLen 推进到 ≥ 今天；
+     · 下次预计开始日 = lastStart 起按 cycleLen 推进到 ≥ 今天；存在 postponedStart
+       时以其为锚点（仍推进到 ≥ 今天），实现「没来」逐日顺延；
      · 预计持续天数 = periodLen；
      · 预测由设置自动排布，日历为只读展示，不支持手动点击修改。
    ============================================================ */
@@ -110,9 +112,16 @@
     }
     var nextStart = lastStart ? new Date(lastStart) : null;
     if (nextStart) {
-      /* 越过已过去的日期；若预测日恰为今天且今天已被标记为经期来（本次已发生），
-         同样推进到下一周期，避免「下次预计开始」停留在今天 */
-      while (diffDays(nextStart, todayDate()) < 0 ||
+      /* 用户点「没来」后以顺延日为锚点，不再从 lastStart 起算 */
+      if (d.postponedStart) {
+        var ps = parseISO(d.postponedStart);
+        if (ps) nextStart = new Date(ps);
+      }
+      /* 越过已过去的日期；预测起始日若仍落在预测窗口期内（距今 < periodLen 天），
+         保持不推进，保证整个窗口期每天都能弹出「是否来姨妈了？」确认条；
+         仅当整个窗口期都已过去、或预测日恰为今天且今天已被标记为经期来（本次已发生），
+         才推进到下一周期，避免「下次预计开始」停留在过去 */
+      while (diffDays(nextStart, todayDate()) < -(periodLen - 1) ||
              (diffDays(nextStart, todayDate()) === 0 && marks[toISO(nextStart)] === 1)) {
         nextStart = addDays(nextStart, cycleLen);
       }
@@ -135,6 +144,19 @@
     if (!p || !p.nextStart) return set;
     for (var i = 0; i < p.periodLen; i++) {
       set[toISO(addDays(p.nextStart, i))] = true;
+    }
+    return set;
+  }
+
+  /* 基于 lastStart 推算的经期段集合：历法上应处于经期、但用户未实际标记的日期，
+     在月历上以「推算经期」样式补可辨识标记（区别于已标记经期与预测期） */
+  function lastISOSet(p) {
+    var set = {};
+    if (!p || !p.lastStartISO) return set;
+    var startD = parseISO(p.lastStartISO);
+    if (!startD) return set;
+    for (var i = 0; i < p.periodLen; i++) {
+      set[toISO(addDays(startD, i))] = true;
     }
     return set;
   }
@@ -188,11 +210,18 @@
     data.lastStart = lastStart;
     data.periodLen = plen;
     data.cycleLen = cyc;
-    /* 以设置为准：重建经期标记，清掉旧的手动标记，避免日历显示杂乱且与设置不符 */
+    delete data.postponedStart; // 重新设置后按新 lastStart 重算预测
+    /* 保留历史、只对齐新段：从旧 marks 拷贝 lastStart 之前的日期（防止未来段
+       覆盖预测锚点），再把 lastStart 起 periodLen 天置 1；不再整体清空重建 */
     var marks = {};
+    var oldMarks = data.marks || {};
+    var oldKeys = Object.keys(oldMarks);
+    for (var i = 0; i < oldKeys.length; i++) {
+      if (oldKeys[i] < lastStart) marks[oldKeys[i]] = oldMarks[oldKeys[i]];
+    }
     var startD = parseISO(lastStart);
     if (startD) {
-      for (var i = 0; i < plen; i++) marks[toISO(addDays(startD, i))] = 1;
+      for (var j = 0; j < plen; j++) marks[toISO(addDays(startD, j))] = 1;
     }
     data.marks = marks;
     write(data);
@@ -239,9 +268,26 @@
     data.marks = marks;
     data.lastStart = iso;
     data.onboarded = true;
+    delete data.postponedStart; // 已确认真实开始日，清除顺延锚点
     write(data);
     confirmDismissed = true;
     UI.toast('已记录今天为月经期开始');
+    render();
+  }
+
+  /* "没来"：把预测起始日顺延 +1 天（至少到明天），写入 postponedStart 作为
+     预测锚点；不写 marks、不动 lastStart，不污染历史记录 */
+  function markPeriodNoToday() {
+    var data = read() || {};
+    var p = predict(data);
+    var base = (p && p.nextStart) ? p.nextStart : todayDate();
+    var tomorrow = addDays(todayDate(), 1);
+    var postponed = addDays(base, 1);
+    if (diffDays(postponed, tomorrow) < 0) postponed = new Date(tomorrow); // 至少明天
+    data.postponedStart = toISO(postponed);
+    write(data);
+    confirmDismissed = true;
+    UI.toast('已顺延 · 预计 ' + Utils.fmtCN(postponed) + ' 开始');
     render();
   }
 
@@ -253,10 +299,17 @@
     if (!starts.length) return;
     if (starts[starts.length - 1] === data.lastStart) return; // 一致，无需重建
     var plen = Number(data.periodLen) || DEFAULT_PERIOD_LEN;
+    /* 保留历史、只对齐新段（与 saveSetup 同逻辑）：拷贝 lastStart 之前的历史段，
+       补写 lastStart 段，清掉 lastStart 之后的未来段，避免误触发全量重建 */
     var marks = {};
+    var oldMarks = data.marks || {};
+    var oldKeys = Object.keys(oldMarks);
+    for (var i = 0; i < oldKeys.length; i++) {
+      if (oldKeys[i] < data.lastStart) marks[oldKeys[i]] = oldMarks[oldKeys[i]];
+    }
     var startD = parseISO(data.lastStart);
     if (startD) {
-      for (var i = 0; i < plen; i++) marks[toISO(addDays(startD, i))] = 1;
+      for (var j = 0; j < plen; j++) marks[toISO(addDays(startD, j))] = 1;
     }
     data.marks = marks;
     write(data);
@@ -293,7 +346,7 @@
     }
     var nextTxt = p.nextStart ? (Utils.fmtCN(p.nextStart) + ' · ' + WEEK_HEAD[(p.nextStart.getDay() + 6) % 7]) : '—';
     var diff = p.nextStart ? diffDays(p.nextStart, todayDate()) : -1;
-    var diffTxt = diff === 0 ? '就是今天' : (diff > 0 ? '还有 ' + diff + ' 天' : '');
+    var diffTxt = diff === 0 ? '就是今天' : (diff > 0 ? '还有 ' + diff + ' 天' : (diff >= -(p.periodLen - 1) ? '已到预测期' : ''));
     var ovuTxt = p.ovulation ? (Utils.fmtCN(p.ovulation) + ' · ' + WEEK_HEAD[(p.ovulation.getDay() + 6) % 7]) : '';
     html =
       '<div class="period-predict">' +
@@ -325,6 +378,7 @@
     var marks = (data && data.marks) || {};
     var p = predict(data);
     var predSet = predictedISOSet(p);
+    var lastSet = lastISOSet(p);
     var ovuISO = p && p.ovulation ? toISO(p.ovulation) : '';
 
     var first = new Date(viewY, viewM, 1);
@@ -343,6 +397,7 @@
       var st = marks[iso];
       if (st === 1) cls += ' pd-on';
       else if (st === 0) cls += ' pd-off';
+      else if (lastSet[iso]) cls += ' pd-last';
       else if (predSet[iso]) cls += ' pd-pred';
       if (ovuISO === iso) cls += ' pd-ovu';
       html += '<span class="' + cls + '">' +
@@ -407,9 +462,7 @@
         if (cfmBtn.getAttribute('data-pd-confirm') === 'yes') {
           markPeriodStartToday();
         } else {
-          confirmDismissed = true;
-          var cfmEl = document.getElementById('period-confirm');
-          if (cfmEl) cfmEl.classList.add('pc-hide');
+          markPeriodNoToday();
         }
         return;
       }

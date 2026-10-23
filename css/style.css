@@ -1350,12 +1350,12 @@ input, textarea, select {
 
 /* 首页 hero 自定义照片卡（拍立得风格）：白边 + 下方装饰小字，图片完整无遮挡，hero 背景始终为默认渐变 */
 .home-photo {
-  width: min(240px, 72%);
-  padding: 10px 10px 30px;
+  width: min(320px, 78%);
+  padding: 6px 6px 14px;
   border-radius: 16px;
   background: var(--card);
   box-shadow: var(--shadow);
-  margin: 0 auto var(--sp-3);
+  margin: 0 auto 6px;
 }
 .home-photo img {
   width: 100%;
@@ -1368,10 +1368,10 @@ input, textarea, select {
 .photo-cap {
   display: block;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 1px;
   color: var(--sub);
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 /* 首页背景图设置弹窗（沿用 sheet 体系） */

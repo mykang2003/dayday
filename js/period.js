@@ -467,6 +467,17 @@
     box.innerHTML = html;
   }
 
+  /* 返回 iso 在其所属连续经期段中的第几天（1-based，经期第1天=1）；
+     仅对 marks 中标记为经期来(1)的日期计算，非经期日返回 0 */
+  function periodDayIndex(iso, marks) {
+    var d = parseISO(iso);
+    if (!d || marks[iso] !== 1) return 0;
+    var idx = 1;
+    var cur = d;
+    while (marks[toISO(addDays(cur, -1))] === 1) { cur = addDays(cur, -1); idx++; }
+    return idx;
+  }
+
   function renderCal() {
     var title = document.getElementById('pd-title');
     var grid = document.getElementById('pd-grid');
@@ -494,7 +505,11 @@
       var cls = 'dp-cell pd-cell';
       if (sameDate(date, today)) cls += ' dp-today';
       var st = marks[iso];
-      if (st === 1) cls += ' pd-on';
+      if (st === 1) {
+        cls += ' pd-on';
+        var di = periodDayIndex(iso, marks);
+        cls += di <= 2 ? ' pd-on-d' + di : ' pd-on-dn';
+      }
       else if (st === 0) cls += ' pd-off';
       else if (lastSet[iso]) cls += ' pd-last';
       else if (predSet[iso]) cls += ' pd-pred';

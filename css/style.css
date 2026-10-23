@@ -1274,22 +1274,28 @@ input, textarea, select {
 .pd-cell:active { background: var(--soft); }
 .pd-cell.pd-on { background: var(--pd-pink-bg); color: var(--pd-pink-deep); font-weight: 700; }
 .pd-cell.pd-on .pd-dot { width: 8px; height: 8px; background: var(--pd-pink-deep); }
+/* 方案A：经期按第几天做血量渐变——第1-2天深饱和、第3天起渐浅 */
+.pd-cell.pd-on.pd-on-d1 { background: var(--pd-pink-deep); color: var(--on-primary); }
+.pd-cell.pd-on.pd-on-d2 { background: var(--pd-pink); color: var(--on-primary); }
+.pd-cell.pd-on.pd-on-dn { background: color-mix(in srgb, var(--pd-pink) 42%, var(--card)); color: var(--pd-pink-deep); }
+.pd-cell.pd-on.pd-on-d1 .pd-dot, .pd-cell.pd-on.pd-on-d2 .pd-dot { background: color-mix(in srgb, var(--on-primary) 85%, transparent); }
+.pd-cell.pd-on.pd-on-dn .pd-dot { background: var(--pd-pink-deep); }
 .pd-cell.pd-off { background: var(--pd-off-soft); color: var(--pd-off); font-weight: 600; }
 .pd-cell.pd-off .pd-dot { background: var(--pd-off); }
-.pd-cell.pd-pred { background: transparent; }
-.pd-cell.pd-pred .dp-d { color: var(--pd-pink); }
-.pd-cell.pd-pred .pd-dot { width: 8px; height: 8px; background: color-mix(in srgb, var(--pd-pink) 38%, transparent); border: none; }
-.pd-cell.pd-last { background: transparent; }
+.pd-cell.pd-pred { background: color-mix(in srgb, var(--pd-pink) 6%, var(--card)); border: 1px dashed color-mix(in srgb, var(--pd-pink) 62%, transparent); }
+.pd-cell.pd-pred .dp-d { color: color-mix(in srgb, var(--pd-pink) 80%, var(--text)); }
+.pd-cell.pd-pred .pd-dot { width: 7px; height: 7px; background: transparent; border: 1.5px dashed var(--pd-pink); }
+.pd-cell.pd-last { background: color-mix(in srgb, var(--pd-pink) 16%, var(--card)); }
 .pd-cell.pd-last .dp-d { color: var(--pd-pink-deep); }
 .pd-cell.pd-last .pd-dot { width: 8px; height: 8px; background: color-mix(in srgb, var(--pd-pink) 55%, var(--card)); border: none; }
-.pd-cell.pd-ovu { background: var(--pd-ovu-soft); }
+.pd-cell.pd-ovu { background: color-mix(in srgb, #9B5DE5 18%, var(--card)); }
 .pd-cell.pd-ovu .dp-d { color: var(--pd-ovu); font-weight: 700; }
-.pd-cell.pd-ovu .pd-dot { width: 9px; height: 9px; border: 2px solid var(--pd-ovu); background: transparent; position: relative; }
-.pd-cell.pd-ovu .pd-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: var(--pd-ovu); }
+.pd-cell.pd-ovu .pd-dot { width: 10px; height: 10px; border: none; border-radius: 3px; background: #9B5DE5; position: relative; box-shadow: 0 0 9px rgba(155,93,229,.85), 0 0 2px rgba(155,93,229,.9); transform: rotate(45deg); }
+.pd-cell.pd-ovu .pd-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; }
 .pd-cell.dp-today { font-weight: 700; }
 .pd-cell.dp-today::after { display: none; }
 .pd-cell.dp-today .dp-d { box-shadow: inset 0 -2px 0 var(--pd-pink); }
-.pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-pred.dp-today .dp-d, .pd-cell.pd-last.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
+.pd-cell.pd-on.dp-today .dp-d, .pd-cell.pd-off.dp-today .dp-d, .pd-cell.pd-last.dp-today .dp-d, .pd-cell.pd-ovu.dp-today .dp-d { box-shadow: none; }
 
 .period-legend { display: flex; justify-content: center; flex-wrap: wrap; row-gap: var(--sp-1); margin-top: var(--sp-3); font-size: 12px; color: var(--sub); }
 .period-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); }
@@ -1299,10 +1305,10 @@ input, textarea, select {
 .pd-lg-dot.on::after { content: none; }
 .pd-lg-dot.last { background: color-mix(in srgb, var(--pd-pink) 55%, var(--card)); border: none; }
 .pd-lg-dot.last::after { content: none; }
-.pd-lg-dot.pred { background: color-mix(in srgb, var(--pd-pink) 38%, transparent); border: none; }
+.pd-lg-dot.pred { background: transparent; border: 1.5px dashed var(--pd-pink); }
 .pd-lg-dot.pred::after { content: none; }
-.pd-lg-dot.ovu { background: transparent; border: 2px solid var(--pd-ovu); }
-.pd-lg-dot.ovu::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--pd-ovu); }
+.pd-lg-dot.ovu { background: #9B5DE5; border: none; border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 6px rgba(155,93,229,.8); }
+.pd-lg-dot.ovu::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; }
 .period-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--pd-pink-bg); border: 1px solid var(--pd-pink-soft); border-radius: var(--r-lg); }
 .period-confirm.pc-hide { visibility: hidden; }
 

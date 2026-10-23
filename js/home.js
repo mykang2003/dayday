@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    和你第N天 · home.js
    首页（PRD 6 / Page 01）
    ============================================================ */
@@ -53,7 +53,7 @@
   }
 
   /* 首页卡片配置：od.homeCards 存各区块显隐开关（默认全部展示）
-     hero=在一起天数 / quote=每日一句 / birthday=TA的生日 / countdown=纪念日倒计时
+     hero=在一起天数 / quote=每日一句 / birthday=TA的生日 / countdown=纪念日倒计时（已下线，键保留以免破坏配置读写）
      next=下一个特别日子 / quick=快捷入口 / recent=最近回忆 */
   var HOME_CARDS = [
     { key: 'hero', label: '在一起天数' },
@@ -75,8 +75,8 @@
     }
     return out;
   }
-  /* 按配置隐藏/恢复首页卡片：配置关闭时强制隐藏；
-     配置开启时仅恢复无内部显隐逻辑的区块（birthday/countdown 由各自渲染逻辑决定） */
+  /* 按配置隐藏/恢复首页卡片：配置关闭时强制隐藏；countdown 已下线始终隐藏；
+     birthday 配置开启时由渲染逻辑决定显隐，配置关闭时强制隐藏 */
   function applyHomeCards() {
     var cfg = getHomeCards();
     var map = {
@@ -91,11 +91,30 @@
     for (var k in map) {
       var el = map[k];
       if (!el) continue;
-      if (cfg[k] === false) {
+      /* countdown 已下线（纪念日倒计时卡不再展示），无论配置如何都强制隐藏 */
+      if (cfg[k] === false || k === 'countdown') {
         el.hidden = true;
-      } else if (k !== 'birthday' && k !== 'countdown') {
+      } else if (k !== 'birthday') {
         el.hidden = false;
       }
+    }
+  }
+
+/* 首页 hero 自定义照片卡（分离布局）：有 od.homeBg 时设置照片卡 img 并显示，hero 背景保持默认渐变，不设背景图/遮罩 */
+  function applyHomeBg() {
+    var hero = document.getElementById('home-hero');
+    var photo = document.getElementById('home-photo');
+    var img = document.getElementById('home-photo-img');
+    if (!hero || !photo || !img) return;
+    var bg = OD.LS.get('homeBg', '');
+    if (bg) {
+      img.src = bg;
+      photo.hidden = false;
+      hero.classList.remove('no-photo');
+    } else {
+      img.removeAttribute('src');
+      photo.hidden = true;
+      hero.classList.add('no-photo');
     }
   }
 
@@ -144,18 +163,6 @@
     el.innerHTML = html;
   }
 
-  /* F. 在一起总时长：X 年 X 个月 X 天 */
-  function renderDuration() {
-    var el = document.getElementById('home-duration');
-    if (!el) return;
-    var couple = State.couple();
-    var start = couple ? Utils.parseDate(couple.relationshipDate) : null;
-    var dur = start ? Utils.duration(start) : null;
-    if (!dur) { el.hidden = true; return; }
-    el.hidden = false;
-    el.innerHTML = '在一起 <b>' + dur.text + '</b>';
-  }
-
   /* I. TA 的生日卡片（复用纪念日 hero 卡片风格，置于首页 hero 上方）
      只展示"TA 的生日"倒计时；未设置时隐藏 */
   var BIRTH_WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -180,6 +187,7 @@
       '<div class="cd-date">' + esc(Utils.fmtCN(bd.date)) + lunarSuffix + '</div>';
   }
 
+    /* 最近的回忆：竖排 memory-card 列表 */
   function renderRecent() {
     var wrap = document.getElementById('home-recent');
     var list = State.memories().slice().sort(function (a, b) {
@@ -226,18 +234,15 @@
     var quote = OD.QUOTES[quoteIdx].replace('{n}', days);
     document.getElementById('home-quote').textContent = '“' + quote + '”';
 
-    document.getElementById('home-today-tip').textContent =
-      days === 1 ? '今天是第1天 ❤️' : '原来我们已经一起走了这么久。';
-
     renderNext(nextAuto() || nextCustom());
     renderCountdown();
-    renderDuration();
     renderBirthday();
     renderRecent();
     applyHomeCards();
+    applyHomeBg();
   }
 
-  global.Views.home = { render: render };
+  global.Views.home = { render: render, applyBg: applyHomeBg };
 
   /* 首页卡片配置导出（供 profile.js 的"我的/设置"页使用） */
   global.HomeCards = {

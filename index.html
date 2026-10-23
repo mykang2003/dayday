@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" data-theme="cream">
 <head>
 <meta charset="UTF-8">
@@ -141,13 +141,14 @@
   </header>
 
   <div class="home-hero" id="home-hero">
+    <div class="home-photo" id="home-photo" hidden><img id="home-photo-img" alt=""><span class="photo-cap">♡ ourdays ♡</span></div>
     <div class="hero-names" id="home-names" hidden></div>
     <div class="hero-sub">我们已经在一起</div>
-    <div class="hero-num" id="home-days">0</div>
-    <div class="hero-unit">天</div>
+    <div class="hero-days-row">
+      <div class="hero-num" id="home-days">0</div>
+      <div class="hero-unit">天</div>
+    </div>
     <div class="hero-range" id="home-range"></div>
-    <div class="hero-duration" id="home-duration" hidden></div>
-    <div class="hero-tip" id="home-today-tip"></div>
   </div>
 
   <div class="quote-card" id="home-quote"></div>
@@ -386,6 +387,7 @@
     <button class="setting-item" id="profile-date">在一起日期<span class="setting-value" id="profile-date-label"></span></button>
     <button class="setting-item" id="profile-cards">首页卡片<span class="setting-value" id="profile-cards-label"></span></button>
     <button class="setting-item" id="profile-theme">更换主题<span class="setting-value" id="theme-label"></span></button>
+    <button class="setting-item" id="profile-homebg">首页背景图<span class="setting-value" id="profile-homebg-label">未设置</span></button>
     <button class="setting-item" id="profile-ai">AI 设置<span class="setting-value" id="ai-status"></span></button>
     <button class="setting-item" id="profile-period">生理期设置<span class="setting-value" id="profile-period-label">未设置</span></button>
     <button class="setting-item" id="profile-export">导出数据</button>
@@ -426,6 +428,10 @@
       <span><i class="pd-lg-dot pred"></i>预测期</span>
       <span><i class="pd-lg-dot ovu"></i>排卵日</span>
     </div>
+    <div class="period-remind pc-hide" id="period-remind">
+      <span class="pr-text" id="period-remind-text"></span>
+      <button type="button" class="pr-close" data-pd-remind-close aria-label="关闭提醒">✕</button>
+    </div>
     <div class="period-confirm" id="period-confirm">
       <div class="pc-text">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C7.5 7.2 4.5 11.2 4.5 15a7.5 7.5 0 0 0 15 0c0-3.8-3-7.8-7.5-13z"/></svg>
@@ -465,6 +471,10 @@
     </div>
     <button class="btn btn-primary btn-lg btn-block" id="period-save">保存</button>
     <button class="btn btn-ghost btn-block" id="period-reset">清空数据，重新设置</button>
+    <div class="pd-backup-row">
+      <button type="button" class="btn btn-ghost" id="period-export">导出数据</button>
+      <button type="button" class="btn btn-ghost" id="period-import">导入数据</button>
+    </div>
   </div>
 </div>
 
@@ -538,6 +548,43 @@
       <button class="theme-opt" data-theme="mint"><span class="theme-swatch theme-mint"></span><span>薄荷</span><span class="theme-sub">清爽通透</span></button>
       <button class="theme-opt" data-theme="sea"><span class="theme-swatch theme-sea"></span><span>海盐</span><span class="theme-sub">安静辽阔</span></button>
       <button class="theme-opt" data-theme="sun"><span class="theme-swatch theme-sun"></span><span>暖阳</span><span class="theme-sub">明亮温暖</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 首页背景图设置弹窗 -->
+<div class="sheet" id="homebg-sheet" hidden>
+  <div class="sheet-head">
+    <div class="sheet-title">首页背景图</div>
+    <button class="icon-btn sheet-close" data-close-sheet aria-label="关闭">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div id="homebg-select" class="homebg-drop">
+      <p class="sheet-desc">支持拖拽上传图片，或点击下方按钮选择，自动压缩到 1280px 以内。</p>
+      <div class="homebg-preview" id="homebg-preview">
+        <img id="homebg-preview-img" alt="首页背景预览" hidden>
+        <span class="homebg-preview-empty" id="homebg-preview-empty">未设置 · 使用默认背景</span>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" id="homebg-pick">上传图片</button>
+      <input type="file" id="homebg-file" accept="image/*" hidden>
+      <button class="btn btn-ghost btn-block" id="homebg-clear" hidden>清除背景图</button>
+    </div>
+    <div id="homebg-crop" hidden>
+      <p class="sheet-desc">拖拽图片调整位置，用滑块或按钮缩放，按 3:4 竖版框裁剪。</p>
+      <div class="crop-wrap">
+        <div class="crop-stage" id="crop-stage">
+          <img id="crop-img" alt="裁剪预览" draggable="false">
+        </div>
+      </div>
+      <div class="crop-controls">
+        <button class="icon-btn" id="crop-zoom-out" aria-label="缩小">−</button>
+        <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1">
+        <button class="icon-btn" id="crop-zoom-in" aria-label="放大">＋</button>
+      </div>
+      <div class="crop-actions">
+        <button class="btn btn-ghost" id="crop-cancel">取消</button>
+        <button class="btn btn-primary" id="crop-ok">确认使用</button>
+      </div>
     </div>
   </div>
 </div>

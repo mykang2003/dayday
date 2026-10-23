@@ -56,6 +56,8 @@
       var pd = OD.LS.get('period', null);
       pdLabel.textContent = (pd && pd.onboarded) ? '已设置' : '未设置';
     }
+    var hbLabel = document.getElementById('profile-homebg-label');
+    if (hbLabel) hbLabel.textContent = OD.LS.get('homeBg', '') ? '已设置' : '未设置';
   }
 
   function render() {
@@ -415,6 +417,277 @@
     UI.openSheet('theme-sheet');
   }
 
+  /* ---------- 首页 hero 自定义背景图（设置入口：我的-设置） ---------- */
+  var HOME_BG_MAX = 1280;
+
+  function loadImageFile(file, cb) {
+    var reader = new FileReader();
+    reader.onload = function () { cb(reader.result); };
+    reader.onerror = function () { cb(null); };
+    reader.readAsDataURL(file);
+  }
+
+  function downscaleToDataUrl(dataUrl, maxSize, cb) {
+    var img = new Image();
+    img.onload = function () {
+      var scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      var w = Math.round(img.width * scale);
+      var h = Math.round(img.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function () { cb(null); };
+    img.src = dataUrl;
+  }
+
+  function updateHomeBgLabel() {
+    var label = document.getElementById('profile-homebg-label');
+    if (label) label.textContent = OD.LS.get('homeBg', '') ? '已设置' : '未设置';
+  }
+
+  function refreshHomeBgPreview() {
+    var img = document.getElementById('homebg-preview-img');
+    var empty = document.getElementById('homebg-preview-empty');
+    var clear = document.getElementById('homebg-clear');
+    var bg = OD.LS.get('homeBg', '');
+    if (bg) {
+      img.src = bg;
+      img.hidden = false;
+      empty.hidden = true;
+      clear.hidden = false;
+    } else {
+      img.removeAttribute('src');
+      img.hidden = true;
+      empty.hidden = false;
+      clear.hidden = true;
+    }
+  }
+
+  function applyHomeBgNow() {
+    if (global.Views.home && typeof global.Views.home.applyBg === 'function') {
+      global.Views.home.applyBg();
+    }
+  }
+
+  function openHomeBgSheet() {
+    refreshLabels();
+    refreshHomeBgPreview();
+    showSelectState();
+    UI.openSheet('homebg-sheet');
+  }
+
+  /* ---------- 3:4 拖拽裁剪器（上传后裁剪，纯前端） ---------- */
+  var crop = {
+    img: null,
+    baseScale: 1,
+    scale: 1,
+    left: 0,
+    top: 0,
+    dragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragStartLeft: 0,
+    dragStartTop: 0
+  };
+
+  function showSelectState() {
+    document.getElementById('homebg-crop').hidden = true;
+    document.getElementById('homebg-select').hidden = false;
+  }
+
+  function showCropState() {
+    document.getElementById('homebg-select').hidden = true;
+    document.getElementById('homebg-crop').hidden = false;
+  }
+
+  function openCrop(dataUrl) {
+    var img = new Image();
+    img.onload = function () {
+      crop.img = img;
+      showCropState();
+      initCrop();
+    };
+    img.onerror = function () { alert('图片读取失败，请重试'); };
+    img.src = dataUrl;
+  }
+
+  function initCrop() {
+    var stage = document.getElementById('crop-stage');
+    var img = document.getElementById('crop-img');
+    var r = stage.getBoundingClientRect();
+    var iw = crop.img.naturalWidth, ih = crop.img.naturalHeight;
+    var base = Math.min(r.width / iw, r.height / ih);
+    crop.baseScale = base;
+    crop.scale = base;
+    img.src = crop.img.src;
+    img.style.width = Math.round(iw * base) + 'px';
+    img.style.height = Math.round(ih * base) + 'px';
+    document.getElementById('crop-zoom').value = 1;
+    centerCropImg();
+  }
+
+  function applyCropPos() {
+    var img = document.getElementById('crop-img');
+    img.style.transform = 'translate(' + crop.left + 'px,' + crop.top + 'px)';
+  }
+
+  function centerCropImg() {
+    var stage = document.getElementById('crop-stage');
+    var r = stage.getBoundingClientRect();
+    var iw = crop.img.naturalWidth * crop.scale;
+    var ih = crop.img.naturalHeight * crop.scale;
+    crop.left = Math.round((r.width - iw) / 2);
+    crop.top = Math.round((r.height - ih) / 2);
+    applyCropPos();
+  }
+
+  /* 边界约束：图片必须始终覆盖整个裁剪窗口，边缘不得露出留白 */
+  function clampCropPos() {
+    var stage = document.getElementById('crop-stage');
+    var r = stage.getBoundingClientRect();
+    var iw = crop.img.naturalWidth * crop.scale;
+    var ih = crop.img.naturalHeight * crop.scale;
+    if (iw >= r.width) {
+      crop.left = Math.max(r.width - iw, Math.min(0, crop.left));
+    } else {
+      crop.left = Math.round((r.width - iw) / 2);
+    }
+    if (ih >= r.height) {
+      crop.top = Math.max(r.height - ih, Math.min(0, crop.top));
+    } else {
+      crop.top = Math.round((r.height - ih) / 2);
+    }
+    applyCropPos();
+  }
+
+  /* 缩放：滑块 1~3 倍，缩放时保持窗口中心稳定 */
+  function setCropScale(s) {
+    var stage = document.getElementById('crop-stage');
+    var r = stage.getBoundingClientRect();
+    var cx = r.width / 2, cy = r.height / 2;
+    var prevLeft = crop.left, prevTop = crop.top, prevScale = crop.scale;
+    var pImgX = (cx - prevLeft) / prevScale;
+    var pImgY = (cy - prevTop) / prevScale;
+    crop.scale = s;
+    crop.left = Math.round(cx - pImgX * crop.scale);
+    crop.top = Math.round(cy - pImgY * crop.scale);
+    clampCropPos();
+    var img = document.getElementById('crop-img');
+    img.style.width = Math.round(crop.img.naturalWidth * crop.scale) + 'px';
+    img.style.height = Math.round(crop.img.naturalHeight * crop.scale) + 'px';
+    applyCropPos();
+  }
+
+  /* 确认裁剪：按窗口矩形相对图片位置输出 2x 像素图并保存 */
+  function confirmCrop() {
+    var stage = document.getElementById('crop-stage');
+    var r = stage.getBoundingClientRect();
+    var sx = -crop.left / crop.scale;
+    var sy = -crop.top / crop.scale;
+    var sw = r.width / crop.scale;
+    var sh = r.height / crop.scale;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(r.width * 2);
+    canvas.height = Math.round(r.height * 2);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(crop.img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    var out = canvas.toDataURL('image/jpeg', 0.85);
+    OD.LS.set('homeBg', out);
+    updateHomeBgLabel();
+    refreshHomeBgPreview();
+    applyHomeBgNow();
+    showSelectState();
+    UI.toast('首页背景图已更新');
+  }
+
+  /* 拖拽平移（Pointer Events，兼容触屏） */
+  function bindCropEvents() {
+    var img = document.getElementById('crop-img');
+    img.addEventListener('pointerdown', function (e) {
+      crop.dragging = true;
+      crop.dragStartX = e.clientX;
+      crop.dragStartY = e.clientY;
+      crop.dragStartLeft = crop.left;
+      crop.dragStartTop = crop.top;
+      try { img.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      e.preventDefault();
+    });
+    img.addEventListener('pointermove', function (e) {
+      if (!crop.dragging) return;
+      crop.left = crop.dragStartLeft + (e.clientX - crop.dragStartX);
+      crop.top = crop.dragStartTop + (e.clientY - crop.dragStartY);
+      clampCropPos();
+    });
+    img.addEventListener('pointerup', function () { crop.dragging = false; });
+    img.addEventListener('pointercancel', function () { crop.dragging = false; });
+  }
+
+  /* 图片文件统一处理链路：读取 → 进裁剪态（点击选择与拖拽共用） */
+  function handleHomeBgFile(file) {
+    if (!file) return;
+    loadImageFile(file, function (dataUrl) {
+      if (!dataUrl) { alert('图片读取失败，请重试'); return; }
+      openCrop(dataUrl);
+    });
+  }
+
+  function onHomeBgPicked() {
+    var input = document.getElementById('homebg-file');
+    var file = input && input.files && input.files[0];
+    if (!file) return;
+    handleHomeBgFile(file);
+    input.value = '';
+  }
+
+  /* 选择态拖拽文件上传（dragenter/dragover/dragleave/drop） */
+  function bindDropUpload() {
+    var zone = document.getElementById('homebg-select');
+    if (!zone) return;
+    var dragDepth = 0;
+    zone.addEventListener('dragenter', function (e) {
+      e.preventDefault();
+      dragDepth += 1;
+      zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragover', function (e) {
+      e.preventDefault();
+    });
+    zone.addEventListener('dragleave', function (e) {
+      e.preventDefault();
+      dragDepth -= 1;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        zone.classList.remove('drag-over');
+      }
+    });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      dragDepth = 0;
+      zone.classList.remove('drag-over');
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      if (!/^image\//.test(file.type)) {
+        UI.toast('仅支持图片文件');
+        return;
+      }
+      handleHomeBgFile(file);
+    });
+  }
+
+  function clearHomeBg() {
+    OD.LS.remove('homeBg');
+    updateHomeBgLabel();
+    refreshHomeBgPreview();
+    applyHomeBgNow();
+  }
+
   function bind() {
     document.getElementById('profile-edit').addEventListener('click', function () {
       if (global.Views.onboarding && global.Views.onboarding.setEditMode) {
@@ -428,6 +701,29 @@
     if (cardsEntry) cardsEntry.addEventListener('click', openCardsSheet);
     document.getElementById('profile-theme').addEventListener('click', openThemeSheet);
     document.getElementById('profile-ai').addEventListener('click', openAiSheet);
+    document.getElementById('profile-homebg').addEventListener('click', openHomeBgSheet);
+    document.getElementById('homebg-pick').addEventListener('click', function () {
+      document.getElementById('homebg-file').click();
+    });
+    document.getElementById('homebg-file').addEventListener('change', onHomeBgPicked);
+    document.getElementById('homebg-clear').addEventListener('click', clearHomeBg);
+    /* 3:4 裁剪器事件 */
+    document.getElementById('crop-cancel').addEventListener('click', showSelectState);
+    document.getElementById('crop-ok').addEventListener('click', confirmCrop);
+    var cropSlider = document.getElementById('crop-zoom');
+    cropSlider.addEventListener('input', function () {
+      setCropScale(crop.baseScale * parseFloat(cropSlider.value));
+    });
+    document.getElementById('crop-zoom-out').addEventListener('click', function () {
+      cropSlider.value = Math.max(1, parseFloat(cropSlider.value) - 0.1);
+      setCropScale(crop.baseScale * parseFloat(cropSlider.value));
+    });
+    document.getElementById('crop-zoom-in').addEventListener('click', function () {
+      cropSlider.value = Math.min(3, parseFloat(cropSlider.value) + 0.1);
+      setCropScale(crop.baseScale * parseFloat(cropSlider.value));
+    });
+    bindCropEvents();
+    bindDropUpload();
     var periodEntry = document.getElementById('profile-period');
     if (periodEntry) periodEntry.addEventListener('click', function () {
       if (global.Views.period && global.Views.period.openSetup) {

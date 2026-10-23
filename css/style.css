@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    和你第N天 · style.css
    温柔 / 高级 / 克制 / 有呼吸感
    ============================================================ */
@@ -443,18 +443,25 @@ textarea { -webkit-appearance: none; appearance: none; }
 /* ---------- 首页 ----------
    首屏节奏：大留白 24 / 常规 16 / 微调 8 / 贴边 4 */
 .home-hero {
-  text-align: center; padding: var(--sp-5) 0 var(--sp-2); position: relative;
+  text-align: center; padding: calc(var(--sp-5) - 8px) 0 var(--sp-2); position: relative;
   background: var(--hero-grad);
 }
-.hero-sub { font-size: 16px; color: var(--sub); }
-.hero-num {
-  font-size: 120px; font-weight: 800; line-height: 1.05; letter-spacing: -2px;
+/* 未设置背景照片时（applyHomeBg 加 no-photo 类）：hero 顶部不留照片卡占位，文字区上移顶到页面顶部 */
+.home-hero.no-photo { padding-top: 0; }
+/* hero 文字区新排版：小标签副题 → 数字+单位同行 → 日期 → 时长胶囊 → 提示 */
+.hero-sub { font-size: 12px; letter-spacing: .32em; text-indent: .32em; color: var(--sub); margin-top: 2px; }
+.hero-days-row {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 6px; margin-top: 6px;
+}
+.hero-days-row .hero-num {
+  font-size: 92px; font-weight: 800; line-height: 1.05; letter-spacing: -2px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 90%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.hero-unit { font-size: 24px; color: var(--sub); margin-top: calc(var(--sp-2) * -1); }
-.hero-range { font-size: 13px; color: var(--sub); margin-top: var(--sp-2); letter-spacing: .4px; }
-.hero-tip { font-size: 13px; color: var(--primary-deep); margin-top: var(--sp-1); }
+.hero-days-row .hero-unit { font-size: 22px; color: var(--sub); margin-top: 0; }
+.hero-range { font-size: 12px; color: var(--sub); margin-top: 8px; letter-spacing: .6px; }
+.hero-tip { font-size: 12px; color: var(--primary-deep); margin-top: 10px; opacity: .9; }
 
 /* 强调卡片（引言 / 下一个特别日子）：统一圆角 24、内边距 24 与 16 */
 .quote-card {
@@ -498,6 +505,7 @@ textarea { -webkit-appearance: none; appearance: none; }
 
 /* 回忆卡片 */
 .recent-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+
 .memory-card {
   background: var(--card); border-radius: var(--r-lg); overflow: hidden;
   box-shadow: var(--shadow); border: 1px solid var(--line);
@@ -1022,16 +1030,25 @@ input, textarea, select {
 /* 首页 hero：天数大字上方的小字，居中 + 单行省略，不挤压天数数字 */
 .hero-names {
   max-width: 100%;
-  margin-bottom: var(--sp-2);
+  margin-bottom: 4px;
   padding: 0 var(--sp-3);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  color: var(--sub);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--primary-deep);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.hero-names::before,
+.hero-names::after {
+  content: '♡';
+  font-size: 12px;
+  vertical-align: 3px;
+  margin: 0 8px;
+  color: var(--primary);
+  opacity: .75;
 }
 /* 分区标题右侧的操作提示文字 */
 .section-hint {
@@ -1083,10 +1100,10 @@ input, textarea, select {
 /* ---------- F：在一起总时长（首页） ---------- */
 .hero-duration {
   display: inline-flex; align-items: center; justify-content: center;
-  gap: var(--sp-2); margin-top: var(--sp-2);
-  font-size: 14px; font-weight: 600; color: var(--primary-deep);
+  gap: 6px; margin-top: 12px;
+  font-size: 13px; font-weight: 600; color: var(--primary-deep);
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 999px; padding: 6px 14px;
+  border-radius: 999px; padding: 5px 14px;
   box-shadow: var(--shadow);
 }
 .hero-duration .hd-ico { font-size: 16px; }
@@ -1288,6 +1305,17 @@ input, textarea, select {
 .pd-lg-dot.ovu::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--pd-ovu); }
 .period-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--pd-pink-bg); border: 1px solid var(--pd-pink-soft); border-radius: var(--r-lg); }
 .period-confirm.pc-hide { visibility: hidden; }
+
+/* 经期提醒条：轻量非阻断，主题变量桥接，关闭后本会话不再弹出 */
+.period-remind { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: color-mix(in srgb, var(--pd-pink) 10%, var(--card)); border: 1px solid var(--pd-pink-soft); border-radius: var(--r-lg); font-size: 13px; color: var(--pd-pink-deep); }
+.period-remind.pc-hide { visibility: hidden; }
+.period-remind .pr-text { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
+.period-remind .pr-close { background: transparent; border: 0; color: var(--pd-pink-deep); font-size: 15px; line-height: 1; padding: var(--sp-1); cursor: pointer; opacity: .72; flex: none; }
+.period-remind .pr-close:active { opacity: 1; }
+
+/* 设置弹窗内导出 / 导入入口 */
+.pd-backup-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.pd-backup-row .btn { flex: 1 1 0; min-width: 0; }
 .pc-text { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: 14px; font-weight: 700; color: var(--text); }
 .pc-text svg { width: 16px; height: 16px; fill: var(--pd-pink); flex: none; }
 .pc-actions { display: inline-flex; gap: var(--sp-2); }
@@ -1318,4 +1346,129 @@ input, textarea, select {
   .period-predict .pp-ovu { font-size: 13px; }
   .pc-text { font-size: 13px; }
   .pc-btn { min-width: 48px; min-height: 36px; padding: var(--sp-1) var(--sp-3); display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* 首页 hero 自定义照片卡（拍立得风格）：白边 + 下方装饰小字，图片完整无遮挡，hero 背景始终为默认渐变 */
+.home-photo {
+  width: min(240px, 72%);
+  padding: 10px 10px 30px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  margin: 0 auto var(--sp-3);
+}
+.home-photo img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 8px;
+  display: block;
+}
+.photo-cap {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--sub);
+  margin-top: 10px;
+}
+
+/* 首页背景图设置弹窗（沿用 sheet 体系） */
+.homebg-preview {
+  width: 100%; height: 168px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--line);
+  background: color-mix(in srgb, var(--primary) 6%, var(--card));
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+  display: flex; align-items: center; justify-content: center;
+}
+.homebg-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.homebg-preview-empty { font-size: 13px; color: var(--sub); padding: var(--sp-3); text-align: center; }
+
+/* 首页背景图 3:4 拖拽裁剪器（纯前端，窗口外变暗 + 滑块缩放） */
+.crop-wrap {
+  position: relative;
+  width: 100%;
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-4) 0;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg) 45%, #000);
+}
+.crop-stage {
+  position: relative;
+  width: min(240px, 72%);
+  aspect-ratio: 3 / 4;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.crop-stage img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.crop-stage img:active { cursor: grabbing; }
+.crop-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.crop-controls input[type="range"] {
+  flex: 1;
+  max-width: 180px;
+}
+.crop-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.crop-actions .btn { flex: 1; }
+
+/* 选择态拖拽上传高亮（悬停时虚线框 + 底色变化 + 提示文案） */
+.homebg-drop.drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+}
+.homebg-drop.drag-over .sheet-desc::after {
+  content: ' · 松开即可上传';
+  color: var(--primary);
+  font-weight: 600;
+}
+
+
+
+/* ===== hero v2 末尾覆盖：保证 fitNum 位数缩放与窄屏规则不破坏新排版 ===== */
+.home-hero .hero-days-row .hero-num.num-4 { font-size: 88px; }
+.home-hero .hero-days-row .hero-num.num-5 { font-size: 76px; }
+.home-hero .hero-days-row .hero-num.num-6 { font-size: 64px; }
+.home-hero .hero-days-row .hero-num.num-7 { font-size: 52px; }
+@media (max-width: 390px) {
+  .home-hero .hero-days-row .hero-num.num-4 { font-size: 80px; }
+  .home-hero .hero-days-row .hero-num.num-5 { font-size: 70px; }
+  .home-hero .hero-days-row .hero-num.num-6 { font-size: 58px; }
+  .home-hero .hero-days-row .hero-num.num-7 { font-size: 48px; }
+}
+@media (max-width: 360px) {
+  .home-hero .hero-names { font-size: 16px; }
+  .home-hero .hero-days-row .hero-num { font-size: 76px; }
+  .home-hero .hero-days-row .hero-num.num-4 { font-size: 68px; }
+  .home-hero .hero-days-row .hero-num.num-5 { font-size: 60px; }
+  .home-hero .hero-days-row .hero-num.num-6 { font-size: 50px; }
+  .home-hero .hero-days-row .hero-num.num-7 { font-size: 42px; }
 }

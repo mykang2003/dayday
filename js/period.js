@@ -108,7 +108,7 @@
     /* 最近两次开始日间隔 → 学习周期（宽松校验，防脏数据） */
     if (starts.length >= 2) {
       var gap = diffDays(parseISO(starts[starts.length - 1]), parseISO(starts[starts.length - 2]));
-      if (gap >= 10 && gap <= 90) { cycleLen = gap; learned = true; }
+      if (gap >= 21 && gap <= 40) { cycleLen = gap; learned = true; }
     }
     var nextStart = lastStart ? new Date(lastStart) : null;
     if (nextStart) {
@@ -250,12 +250,111 @@
     });
   }
 
+  /* ---------- 导出 / 导入备份 ---------- */
+  /* 导出：把 od.period 全部数据序列化为 JSON 文件下载（文件名含日期） */
+  function exportPeriodData() {
+    var data = read() || {};
+    var payload = {
+      version: 1,
+      exportedAt: toISO(new Date()),
+      data: data
+    };
+    var text = JSON.stringify(payload, null, 2);
+    var now = todayDate();
+    var fname = 'period-backup-' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) + '.json';
+    var blob = new Blob([text], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    UI.toast('已导出 ' + fname);
+  }
+
+  /* 导入校验：接受导出文件原文（{version, exportedAt, data}）或裸 period 数据对象 */
+  function validateImportData(text) {
+    var obj;
+    try { obj = JSON.parse(text); } catch (e) { return { ok: false, msg: '不是合法的 JSON' }; }
+    if (obj && typeof obj === 'object' && !Array.isArray(obj) && obj.version === 1 && obj.data && typeof obj.data === 'object') {
+      obj = obj.data;
+    }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, msg: '数据格式不正确' };
+    if (obj.marks != null) {
+      if (typeof obj.marks !== 'object' || Array.isArray(obj.marks)) return { ok: false, msg: 'marks 格式不正确' };
+      var keys = Object.keys(obj.marks);
+      for (var i = 0; i < keys.length; i++) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(keys[i]) || (obj.marks[keys[i]] !== 0 && obj.marks[keys[i]] !== 1)) {
+          return { ok: false, msg: 'marks 包含非法日期或标记值' };
+        }
+      }
+    }
+    if (obj.lastStart != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(obj.lastStart))) return { ok: false, msg: 'lastStart 日期格式不正确' };
+    if (obj.postponedStart != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(obj.postponedStart))) return { ok: false, msg: 'postponedStart 日期格式不正确' };
+    if (obj.cycleLen != null && !(Number(obj.cycleLen) >= 10 && Number(obj.cycleLen) <= 90)) return { ok: false, msg: 'cycleLen 超出合理范围' };
+    if (obj.periodLen != null && !(Number(obj.periodLen) >= 1 && Number(obj.periodLen) <= 15)) return { ok: false, msg: 'periodLen 超出合理范围' };
+    return { ok: true, data: obj };
+  }
+
+  /* 导入：校验通过后整体恢复 od.period；失败只提示，不触碰现有数据 */
+  function applyImport(obj) {
+    var clean = { onboarded: !!obj.onboarded };
+    if (obj.lastStart) clean.lastStart = String(obj.lastStart);
+    if (obj.postponedStart) clean.postponedStart = String(obj.postponedStart);
+    clean.cycleLen = Number(obj.cycleLen) || DEFAULT_CYCLE_LEN;
+    clean.periodLen = Number(obj.periodLen) || DEFAULT_PERIOD_LEN;
+    clean.marks = {};
+    if (obj.marks) {
+      var keys = Object.keys(obj.marks);
+      for (var i = 0; i < keys.length; i++) clean.marks[keys[i]] = obj.marks[keys[i]];
+    }
+    write(clean);
+    confirmDismissed = false;
+    remindDismissed = false;
+    UI.closeSheet('period-sheet');
+    UI.toast('导入成功');
+    render();
+  }
+
+  function importFromText(text) {
+    if (!text || !String(text).trim()) { UI.toast('导入内容为空'); return; }
+    var v = validateImportData(text);
+    if (!v.ok) { UI.toast('导入失败：' + v.msg); return; }
+    applyImport(v.data);
+  }
+
+  /* 导入入口：先支持粘贴 JSON；粘贴内容为空则改为选择 .json 文件恢复 */
+  function importPeriodData() {
+    var txt = window.prompt('粘贴备份的 JSON 内容（来自导出的 period-backup-*.json）', '');
+    if (txt == null) return; // 用户取消
+    if (String(txt).trim()) { importFromText(txt); return; }
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () { importFromText(String(reader.result || '')); };
+      reader.readAsText(file);
+    });
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+  }
+
   /* ---------- 三态标记 ----------
      已废弃：预测由设置自动排布，日历为只读展示。
      仅保留「月经来了？」确认条写入 marks；不再支持手动点击修改日历。 */
 
   /* 会话级：本次会话内「月经来了？」确认条是否已处理（是/否均不再弹） */
   var confirmDismissed = false;
+
+  /* 会话级：经期提醒条是否已关闭（关闭后本会话内不再重复弹出） */
+  var remindDismissed = false;
 
   /* "是"：把今天记为经期开始，并顺延 periodLen 天预填为经期来 */
   function markPeriodStartToday() {
@@ -363,7 +462,7 @@
             '<span class="pp-item"><span class="pp-k">预计排卵日</span><span class="pp-v">' + esc(ovuTxt) + '</span></span>' +
           '</div>' : '') +
         '</div>' +
-        '<div class="pp-meta">最近一次开始：' + esc(p.lastStartISO) + (p.learned ? ' · 已修正' : '') + '</div>' +
+        '<div class="pp-meta">最近一次开始：' + esc(p.lastStartISO) + (p.learned && p.cycleLen !== DEFAULT_CYCLE_LEN ? ' · 按实际周期预测' : '') + '</div>' +
       '</div>';
     box.innerHTML = html;
   }
@@ -429,6 +528,18 @@
       var needConfirm = !!(data && data.onboarded && inPredWin && !alreadyMarked);
       cfm.classList.toggle('pc-hide', needConfirm ? confirmDismissed : true);
     }
+    /* 经期提醒条：距下次预计开始 ≤3 天、今日未标记且本会话未关闭时显示（轻量、非阻断） */
+    var rm = document.getElementById('period-remind');
+    if (rm) {
+      var p1 = predict(data);
+      var rmDiff = p1 && p1.nextStart ? diffDays(p1.nextStart, todayDate()) : -1;
+      var showRemind = !!(data && data.onboarded && p1 && p1.nextStart && rmDiff >= 0 && rmDiff <= 3 && !alreadyMarked && !remindDismissed);
+      rm.classList.toggle('pc-hide', !showRemind);
+      if (showRemind) {
+        var rt = document.getElementById('period-remind-text');
+        if (rt) rt.textContent = '预计 ' + Utils.fmtCN(p1.nextStart) + ' 开始经期';
+      }
+    }
     if (!data || !data.onboarded) {
       if (!setupOpenedOnce) {
         setupOpenedOnce = true;
@@ -466,6 +577,8 @@
         }
         return;
       }
+      var rmBtn = t.closest ? t.closest('[data-pd-remind-close]') : null;
+      if (rmBtn) { remindDismissed = true; render(); return; }
     });
 
     var setupBtn = document.getElementById('period-setup');
@@ -476,6 +589,12 @@
 
     var resetBtn = document.getElementById('period-reset');
     if (resetBtn) resetBtn.addEventListener('click', resetPeriod);
+
+    var exportBtn = document.getElementById('period-export');
+    if (exportBtn) exportBtn.addEventListener('click', exportPeriodData);
+
+    var importBtn = document.getElementById('period-import');
+    if (importBtn) importBtn.addEventListener('click', importPeriodData);
 
     var sheet = document.getElementById('period-sheet');
     if (sheet) {

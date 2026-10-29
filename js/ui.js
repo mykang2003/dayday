@@ -210,4 +210,15 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') global.UI.closeAllSheets();
   });
+
+  /* 启动时检测 localStorage 是否可用（隐私模式/被禁用/配额写满）：不可用则提示一次 */
+  (function () {
+    try {
+      if (global.OurDays && global.OurDays.LS && !global.OurDays.LS.persistent()) {
+        setTimeout(function () {
+          toast('浏览器存储不可用，数据仅本次会话有效，请尽快导出备份', 4000);
+        }, 600);
+      }
+    } catch (e) { /* ignore */ }
+  })();
 })(window);

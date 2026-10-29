@@ -312,26 +312,107 @@
   }
 
   function exportData() {
-    var payload = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      app: 'ourdays',
-      couple: State.couple(),
-      settings: settings(),
-      memories: State.memories(),
-      customAnniv: State.customAnniv(),
-      annivOrder: OD.LS.get('annivOrder', []),      // 纪念日拖拽顺序
-      shareTemplate: OD.LS.get('shareTemplate', 'sunny') // 分享模板偏好
-    };
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'ourdays-backup-' + Utils.fmtInput(Utils.today()) + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 800);
-    UI.toast('已导出备份文件');
+    OD.PhotoStore.all().then(function (photos) {
+      var payload = {
+        version: 3,
+        exportedAt: new Date().toISOString(),
+        app: 'ourdays',
+        keys: OD.LS.dumpAll(), // 全部 od.* 本地数据（键名不带 od. 前缀）
+        photos: photos || []   // 回忆照片（IndexedDB / 兜底存储），恢复时按 id 写回
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ourdays-backup-' + Utils.fmtInput(Utils.today()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 800);
+      UI.toast('已导出备份文件');
+    }).catch(function () {
+      UI.toast('导出失败，请重试');
+    });
+  }
+
+  /* ---------- 数据导入恢复（我的-设置：导入数据） ---------- */
+  function importData() {
+    document.getElementById('profile-import-file').click();
+  }
+
+  function onImportFilePicked() {
+    var input = document.getElementById('profile-import-file');
+    var file = input && input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () { handleImportText(String(reader.result || '')); };
+    reader.onerror = function () { UI.toast('读取文件失败，请重试'); };
+    reader.readAsText(file);
+  }
+
+  /* 解析备份 JSON：支持 v3（{app,version,keys:{键名:值},photos:[{id,dataUrl}]}）、
+     v2（{app,version,keys:{键名:值}}）与 v1（顶层 couple/settings/... 字段） */
+  function parseBackup(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    var keysMap = {};
+    var photos = [];
+    if (obj.app === 'ourdays' && obj.keys && typeof obj.keys === 'object') {
+      var ks = obj.keys;
+      for (var k in ks) {
+        if (Object.prototype.hasOwnProperty.call(ks, k) &&
+            /^[a-zA-Z0-9._-]+$/.test(k) && k.indexOf('__') !== 0) {
+          keysMap[k] = ks[k];
+        }
+      }
+      if (Array.isArray(obj.photos)) {
+        photos = obj.photos.filter(function (p) {
+          return p && typeof p === 'object' && p.id && p.dataUrl;
+        });
+      }
+    } else {
+      ['couple', 'settings', 'memories', 'customAnniv', 'annivOrder', 'shareTemplate'].forEach(function (k) {
+        if (obj[k] !== undefined) keysMap[k] = obj[k];
+      });
+    }
+    return (Object.keys(keysMap).length || photos.length) ? { keysMap: keysMap, photos: photos } : null;
+  }
+
+  function applyImport(parsed) {
+    var keysMap = parsed.keysMap;
+    var photos = parsed.photos || [];
+    var n = 0;
+    for (var k in keysMap) {
+      if (!Object.prototype.hasOwnProperty.call(keysMap, k)) continue;
+      OD.LS.set(k, keysMap[k]);
+      n++;
+    }
+    /* 照片恢复：PhotoStore.put 内部自行处理 IndexedDB / LocalStorage 兜底 */
+    Promise.all(photos.map(function (p) { return OD.PhotoStore.put(p.id, p.dataUrl); }))
+      .then(function () {
+        UI.toast('已导入 ' + n + ' 项数据' + (photos.length ? '，含 ' + photos.length + ' 张照片' : '') + '，正在刷新…');
+        setTimeout(function () {
+          try { location.reload(); } catch (e) { global.Nav.go('/home'); }
+        }, 700);
+      })
+      .catch(function () {
+        UI.toast('已导入 ' + n + ' 项数据，但照片恢复失败');
+        setTimeout(function () {
+          try { location.reload(); } catch (e) { global.Nav.go('/home'); }
+        }, 700);
+      });
+  }
+
+  function handleImportText(text) {
+    var obj;
+    try { obj = JSON.parse(text); } catch (e) { UI.toast('文件不是有效的 JSON 备份'); return; }
+    var parsed = parseBackup(obj);
+    if (!parsed) { UI.toast('未识别到可导入的数据'); return; }
+    UI.confirm({
+      title: '导入数据',
+      text: '导入将覆盖当前设备上的全部数据（回忆、纪念日、生理期、设置等），且不可恢复，是否继续？',
+      okText: '覆盖导入',
+      cancelText: '取消'
+    }).then(function (ok) { if (ok) applyImport(parsed); });
   }
 
   function pushSample() {
@@ -371,7 +452,7 @@
   function clearAll() {
     UI.confirm({
       title: '真的要清空吗？',
-      text: '将删除这台设备上的全部回忆、纪念日与设置，且无法恢复。',
+      text: '将删除这台设备上的回忆、纪念日、生理期等全部数据，且无法恢复。',
       okText: '清空全部',
       cancelText: '取消'
     }).then(function (ok) {
@@ -733,6 +814,8 @@
       }
     });
     document.getElementById('profile-export').addEventListener('click', exportData);
+    document.getElementById('profile-import').addEventListener('click', importData);
+    document.getElementById('profile-import-file').addEventListener('change', onImportFilePicked);
     document.getElementById('profile-sample').addEventListener('click', loadSample);
     document.getElementById('profile-reset').addEventListener('click', clearAll);
     document.getElementById('ai-save').addEventListener('click', saveAi);

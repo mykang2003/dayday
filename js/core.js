@@ -24,7 +24,8 @@
       var s;
       try { s = JSON.stringify(val); } catch (e) { return; }
       _memStore[key] = s; // 会话内兜底副本
-      try { localStorage.setItem(LS_PREFIX + key, s); } catch (e) { /* 隐私模式/配额：仅内存可用 */ }
+      try { localStorage.setItem(LS_PREFIX + key, s); }
+      catch (e) { notifyStorageFail(); /* 隐私模式/配额：仅内存可用，向用户提示 */ }
     },
     remove: function (key) {
       delete _memStore[key];
@@ -38,8 +39,45 @@
         localStorage.removeItem(k);
         return true;
       } catch (e) { return false; }
+    },
+    /* 收集全部 od.* 键名（localStorage + 内存兜底副本），供备份导出使用 */
+    allKeys: function () {
+      var keys = [];
+      for (var k in _memStore) {
+        if (k !== '__probe__' && keys.indexOf(k) === -1) keys.push(k);
+      }
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var raw = localStorage.key(i);
+          if (raw && raw.indexOf(LS_PREFIX) === 0) {
+            var name = raw.slice(LS_PREFIX.length);
+            if (name !== '__probe__' && keys.indexOf(name) === -1) keys.push(name);
+          }
+        }
+      } catch (e) { /* ignore */ }
+      return keys;
+    },
+    /* 导出全部 od.* 数据为 { 键名(不带前缀): 值 }，供备份 JSON 使用 */
+    dumpAll: function () {
+      var out = {};
+      var keys = this.allKeys();
+      for (var i = 0; i < keys.length; i++) out[keys[i]] = this.get(keys[i], null);
+      return out;
     }
   };
+
+  /* localStorage 不可用 / 写满时向用户提示（不依赖 UI 模块，直接操作 toast 节点） */
+  var _lsWarnTimer = null;
+  function notifyStorageFail() {
+    try {
+      var el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = '存储空间不可用或已写满，数据仅本次会话有效，请尽快导出备份';
+      el.hidden = false;
+      if (_lsWarnTimer) clearTimeout(_lsWarnTimer);
+      _lsWarnTimer = setTimeout(function () { el.hidden = true; }, 4000);
+    } catch (e) { /* ignore */ }
+  }
 
   /* ---------- 图片 IndexedDB 存储（附 LocalStorage 兜底） ---------- */
   var DB_NAME = 'ourdays-photos';
@@ -133,6 +171,38 @@
         if (!db) return true;
         return withStore('readwrite', function (store) { store.clear(); });
       }).catch(function () { return false; });
+    },
+    /* 导出用：读取全部照片记录 [{id, dataUrl}]；无 IndexedDB 时从 LocalStorage 兜底组装同构数组 */
+    all: function () {
+      return openDB().then(function (db) {
+        if (!db) {
+          var map = LS.get('photos.fallback', {});
+          var arr = [];
+          for (var k in map) {
+            if (Object.prototype.hasOwnProperty.call(map, k)) arr.push({ id: k, dataUrl: map[k] });
+          }
+          return arr;
+        }
+        return new Promise(function (resolve) {
+          try {
+            var tx = db.transaction(DB_STORE, 'readonly');
+            var store = tx.objectStore(DB_STORE);
+            var rows = [];
+            var req = store.openCursor();
+            req.onsuccess = function () {
+              var cur = req.result;
+              if (cur) {
+                var v = cur.value;
+                if (v && v.id && v.dataUrl) rows.push({ id: v.id, dataUrl: v.dataUrl });
+                cur.continue();
+              } else {
+                resolve(rows);
+              }
+            };
+            req.onerror = function () { resolve(rows); };
+          } catch (e) { resolve([]); }
+        });
+      }).catch(function () { return []; });
     }
   };
 
@@ -370,6 +440,10 @@
       LS.remove('settings');
       LS.remove('period');
       LS.remove('photos.fallback');
+      LS.remove('annivOrder');
+      LS.remove('shareTemplate');
+      LS.remove('homeBg');
+      LS.remove('lastPage');
       return PhotoStore.clear();
     }
   };
